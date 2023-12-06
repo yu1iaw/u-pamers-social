@@ -71,6 +71,15 @@ export const messagesData = [
 	},
 ];
 
+export const socials = {
+	instagram: require('../assets/images/instagram.png'),
+	linkedin: require('../assets/images/linkedin.png'), 
+	telegram: require('../assets/images/telegram.png'), 
+	facebook: require('../assets/images/facebook.png'),
+	skype: require('../assets/images/skype.png')
+}
+
+
 export const countries = [
 	"Afghanistan",
 	"Åland Islands",

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Image, Pressable, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 import { useNavigation } from "@react-navigation/native";
@@ -9,7 +10,7 @@ import theme from '../constants';
 
 
 
-export const Header = ({isSignedIn}) => {
+export const Header = memo(({isSignedIn}) => {
 	const { user } = useUser();
 	const navigation = useNavigation();
 
@@ -25,7 +26,7 @@ export const Header = ({isSignedIn}) => {
 						<TouchableOpacity onPress={() => navigation.navigate("Messages")}>
 							<MaterialCommunityIcons name="message-text-outline" size={24} color="white" />
 						</TouchableOpacity>
-						<TouchableOpacity onPress={() => navigation.navigate("Profile")} style={tw`bg-[${theme.border}] p-px rounded-full`}>
+						<TouchableOpacity onPress={() => navigation.navigate("Profile", { tabs: true })} style={tw`bg-[${theme.border}] p-px rounded-full`}>
 							<Image source={{uri: user?.imageUrl}} style={tw`w-7 h-7 rounded-full`} />
 						</TouchableOpacity>
 					</View>
@@ -37,4 +38,4 @@ export const Header = ({isSignedIn}) => {
 			</View>
 		</>
 	);
-};
+});

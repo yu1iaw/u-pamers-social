@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Keyboard } from "react-native";
 import tw from "twrnc";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, AntDesign } from "@expo/vector-icons";
 import SelectDropdown from "react-native-select-dropdown";
-import { useNavigation } from "@react-navigation/native";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
 import RangeSlider from "react-native-range-slider-expo";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 
@@ -14,6 +14,8 @@ import { countries, countriesCode } from "../data";
 import { EXPO_PUBLIC_GOOGLE_PLACES_API_KEY } from "@env";
 import theme from "../constants";
 
+
+
 export const CustomDrawerContent = () => {
 	const [filter, setFilter] = useState("");
 	const [country, setCountry] = useState("");
@@ -23,11 +25,11 @@ export const CustomDrawerContent = () => {
 	const [fromValue, setFromValue] = useState(0);
 	const [toValue, setToValue] = useState(0);
 	const navigation = useNavigation();
-	console.log(filter);
-	console.log(country);
-	console.log(countryCode);
-	console.log(city);
-	console.log(fromValue);
+
+
+	const onApplyPress = () => {
+		navigation.navigate("DrawerHome", { location: city.length ? city : country, age: { fromValue, toValue } })
+	}
 
 
 	return (
@@ -49,7 +51,7 @@ export const CustomDrawerContent = () => {
 					data={["Location", "Age"]}
 					onSelect={(selectedItem, index) => {
 						if (index === 1) {
-							setCountry("");
+							// setCountry("");
 							setCountryCode("");
 						}
 						setFilter(selectedItem);
@@ -97,7 +99,7 @@ export const CustomDrawerContent = () => {
 						styles={toInputBoxStyles}
 						onPress={(data, details = null) => {
 							setCity(data.structured_formatting.main_text);
-                            console.log(details)
+                            console.log(data.description.split(',').at(-1).trim());
 						}}
 						query={{
 							key: EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,
@@ -107,7 +109,7 @@ export const CustomDrawerContent = () => {
 						}}
 					/>
 
-					{!country && <Text style={tw.style(`text-xs`, { fontFamily: "i", color: theme.accent })}>Please select country first</Text>}
+					{!country && <Text style={tw.style(`text-xs -mt-2`, { fontFamily: "i", color: theme.accent })}>Please select country first</Text>}
 				</>
 			)}
 
@@ -132,9 +134,42 @@ export const CustomDrawerContent = () => {
 
 			{filter && (
 				<View style={tw`mt-auto w-full gap-y-3 mb-4`}>
-					<PaperButton title="Apply" filled onPress={() => navigation.navigate("DrawerHome")} />
+					<PaperButton 
+						title="Apply" 
+						filled 
+						onPress={onApplyPress} 
+					/>
 					<PaperButton title="Cancel" onPress={navigation.goBack} />
 				</View>
+			)}
+
+			{filter && (
+				<View style={tw.style(`absolute top-[65%] left-4 flex-row gap-x-2`, Keyboard.isVisible() && 'hidden')}>
+				{!!country && (	
+					<TouchableOpacity 
+						onPress={() => {
+							if (!city.length) return setCountry('');
+							setCity('')
+						}}
+						style={tw`bg-[#EBEEFF] flex-row items-center mt-4 gap-x-1 px-2 py-2 border border-[${theme.btn}] rounded-full`}
+					>
+						<Text style={tw.style(`text-sm`, { fontFamily: "i", color: theme.pr_text })}>{city.length ? city.slice(0, 10) : country.slice(0, 10)}</Text>
+						<AntDesign name="close" size={14} color={theme.pr_text} style={tw`pt-0.5`} />
+					</TouchableOpacity>
+				)}
+				{fromValue > 0 && toValue > 0 && (
+					<TouchableOpacity 
+						onPress={() => {
+							setFromValue(0);
+							setToValue(0);
+						}}
+						style={tw`bg-[#EBEEFF] flex-row items-center mt-4 gap-x-1 px-2 py-2 border border-[${theme.btn}] rounded-full`}
+					>
+						<Text style={tw.style(`text-sm`, { fontFamily: "i", color: theme.pr_text })}>{fromValue} - {toValue} years</Text>
+						<AntDesign name="close" size={14} color={theme.pr_text} style={tw`pt-0.5`} />
+					</TouchableOpacity>
+				)}
+			</View>
 			)}
 		</Wrapper>
 	);

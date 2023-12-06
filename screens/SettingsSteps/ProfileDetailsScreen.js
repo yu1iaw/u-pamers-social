@@ -9,8 +9,8 @@ import { Header } from "../../components/Header";
 import { Input } from "../../components/Input";
 import { PaperButton } from "../../components/PaperButton";
 import { interests, chipIcons } from "../../data";
-import theme from "../../constants";
 import { PaperPortal } from "../../components/PaperPortal";
+import theme from "../../constants";
 
 
 

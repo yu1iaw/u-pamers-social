@@ -9,12 +9,31 @@ import { Header } from "../../components/Header";
 import theme from '../../constants';
 import { Input } from "../../components/Input";
 import { PaperButton } from "../../components/PaperButton";
+import { firebaseInit } from "../../firebase/firebaseInit";
+import { child, getDatabase, ref, update } from "firebase/database";
 
 
 
 export const AccountDetailsScreen = ({navigation}) => {
-    const [emailAddress, setEmailAddress] = useState('');
-    const { isSignedIn } = useUser();
+    const { isLoaded, isSignedIn, user } = useUser();
+    const [name, setName] = useState({
+        firstName: user?.firstName,
+        lastName: user?.lastName
+    });
+
+
+    const updateUser = async () => {
+        if (!isLoaded || !name.firstName || !name.lastName) return;
+
+        await user.update({
+            firstName: name.firstName,
+            lastName: name.lastName,
+        });
+
+        user.reload();
+        navigation.navigate("Profile", { tabs: true });
+
+	};
 
     return (
         <>
@@ -28,23 +47,20 @@ export const AccountDetailsScreen = ({navigation}) => {
                 <View style={tw`bg-white px-3 py-7 mx-4 my-4 gap-y-3 rounded-lg shadow`}>
                     <Input 
                         placeholder={"Login"} 
-                        value={emailAddress}
-                        email 
-                        onChangeText={(email) => setEmailAddress(email) }
+                        disabled
+                        value={user?.emailAddresses[0].emailAddress}
                     />
                     <Input 
                         placeholder={"First Name"} 
-                        value={emailAddress}
-                        email 
-                        onChangeText={(email) => setEmailAddress(email) }
+                        value={name.firstName}
+                        onChangeText={(text) => setName({...name, firstName: text}) }
                     />
                     <Input 
                         placeholder={"Second Name"} 
-                        value={emailAddress}
-                        email 
-                        onChangeText={(email) => setEmailAddress(email) }
+                        value={name.lastName}
+                        onChangeText={(text) => setName({...name, lastName: text}) }
                     />
-                    <PaperButton title="Save updates" filled style={`mt-5`} />
+                    <PaperButton onPress={updateUser} title="Save updates" filled style={`mt-5`} />
                 </View>
             </ScrollView>
         </>

@@ -9,6 +9,9 @@ import { PaddingTop } from "../../components/PaddingTop";
 import { PaperButton } from "../../components/PaperButton";
 import { Wrapper } from "../../components/Wrapper";
 import theme from "../../constants";
+import { child, getDatabase, ref, update } from "firebase/database";
+import { firebaseInit } from "../../firebase/firebaseInit";
+import { useEffect } from "react";
 
 export const SignUpStep2Screen = ({navigation}) => {
 	const { isSignedIn, user, isLoaded } = useUser();
@@ -28,6 +31,21 @@ export const SignUpStep2Screen = ({navigation}) => {
 			});
 		}
 	};
+
+	useEffect(() => {
+		if (!user?.hasImage) return;
+
+		const updateUser = async () => {
+			const app = firebaseInit();
+			const dbRef = ref(getDatabase(app));
+			const childRef = child(dbRef, `users/${user?.id}`);
+			await update(childRef, {
+				image: user?.imageUrl
+			})
+
+		}
+		updateUser();
+	}, [user?.hasImage, user?.imageUrl])
 
 	return (
 		<Wrapper>

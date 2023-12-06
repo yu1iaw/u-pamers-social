@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { Modal, Portal } from 'react-native-paper';
 import tw from 'twrnc';
@@ -9,7 +10,7 @@ import theme from '../constants';
 
 
 
-export const PaperPortal = ({showModal, setShowModal, signUp, setup}) => {
+export const PaperPortal = memo(({showModal, setShowModal, signUp, setup}) => {
     const navigation = useNavigation();
 
 	return (
@@ -52,4 +53,4 @@ export const PaperPortal = ({showModal, setShowModal, signUp, setup}) => {
 			</Modal>
 		</Portal>
 	);
-};
+});

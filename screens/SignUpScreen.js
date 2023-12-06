@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import tw from "twrnc";
 import { FontAwesome } from '@expo/vector-icons';
-import { useSignUp } from "@clerk/clerk-expo";
+import { useSignUp, useUser } from "@clerk/clerk-expo";
+import { child, getDatabase, ref, set } from 'firebase/database';
 
 import { Input } from "../components/Input";
 import { ModalHeader } from "../components/ModalHeader";
@@ -11,9 +12,11 @@ import { PaperButton } from "../components/PaperButton";
 import { Wrapper } from "../components/Wrapper";
 import theme from "../constants";
 import { ErrorMessage } from "../components/ErrorMessage";
+import { firebaseInit } from "../firebase/firebaseInit";
 
 export const SignUpScreen = ({ navigation }) => {
 	const { isLoaded, signUp, setActive } = useSignUp();
+	const { user } = useUser();
 	const [firstName, setFirstName] = useState("");
 	const [lastName, setLastName] = useState("");
 	const [emailAddress, setEmailAddress] = useState("");
@@ -31,6 +34,19 @@ export const SignUpScreen = ({ navigation }) => {
 
 	const e = error.emailAddress || error.firstName || error.lastName || error.password || error.confirmPassword;
 	const isVerified = !isLoaded || !firstName || !lastName || !emailAddress || !password || password !== confirmPassword;
+
+
+	useEffect(() => {
+		if (!user?.id) return;
+
+		const createUserInDB = async () => {
+			const app = firebaseInit();
+			const dbRef = ref(getDatabase(app));
+			const childRef = child(dbRef, `users/${user?.id}`);
+			await set(childRef, { firstName, lastName, emailAddress, signupDate: new Date().toISOString(), userId: user?.id })
+		}
+		createUserInDB();
+	}, [user?.id])
 
 
 	const onFocus = (inputName) => {

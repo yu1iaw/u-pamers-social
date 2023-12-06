@@ -1,4 +1,4 @@
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, useIsFocused } from "@react-navigation/native";
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
@@ -21,6 +21,7 @@ import { AccountDetailsScreen } from "../screens/SettingsSteps/AccountDetailsScr
 import { ChangePasswordScreen } from "../screens/SettingsSteps/ChangePasswordScreen";
 import { ProfileDetailsScreen } from "../screens/SettingsSteps/ProfileDetailsScreen";
 import { PrivacyScreen } from "../screens/SettingsSteps/PrivacyScreen";
+
 
 
 const Stack = createNativeStackNavigator();

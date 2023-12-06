@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Pressable, Text, TouchableOpacity, View } from "react-native";
 import tw from 'twrnc';
 import { Ionicons, AntDesign } from '@expo/vector-icons';
@@ -6,7 +7,7 @@ import { useNavigation } from "@react-navigation/native";
 import theme from '../constants';
 
 
-export const Banner = ({setIsBannerVisible, isSignedIn}) => {
+export const Banner = memo(({setIsBannerVisible, isSignedIn}) => {
     const navigation = useNavigation();
 
 	return (
@@ -30,4 +31,4 @@ export const Banner = ({setIsBannerVisible, isSignedIn}) => {
 			</TouchableOpacity>
 		</View>
 	);
-};
+});
