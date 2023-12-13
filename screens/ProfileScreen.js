@@ -5,55 +5,63 @@ import tw from "twrnc";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Button } from "react-native-paper";
-import { firebaseInit } from "../firebase/firebaseInit";
-import { child, getDatabase, ref, update } from "firebase/database";
+import { collection, doc, getFirestore, updateDoc } from "firebase/firestore";
+import { useDispatch, useSelector } from "react-redux";
 
+import { firebaseInit } from "../firebase/firebaseInit";
 import { Banner } from "../components/Banner";
 import { Header } from "../components/Header";
-import { Wrapper } from "../components/Wrapper";
 import { PaperButton } from "../components/PaperButton";
-import { socials } from "../data";
+import { setPersonalData } from "../redux/personalSlice";
+import { chipIcons, socials } from "../data";
 import theme from "../constants";
 
 
 
 export const ProfileScreen = ({ navigation, route }) => {
 	const [isBannerVisible, setIsBannerVisible] = useState(true);
-	const { tabs, firstName, lastName, city, country, image, socialMedia, userId, chatId } = route.params;
+	const { personalData } = useSelector((state) => state.personalInfo);
+	const { tabs, firstName, lastName, age, location, image, aboutMe, socialMedia, interests, privacy, userId, chatId } = route.params;
 	const { isSignedIn, user } = useUser();
+	const isMyInfoExist = Object.keys(personalData).length && user.id === personalData.id;
+
+	const dispatch = useDispatch();
 	const Container = tabs ? TouchableOpacity : View;
-    const imageSource = image ?? 'https://shorturl.at/dADKQ';
+	const imageSource = image ?? "https://shorturl.at/dADKQ";
 
-
-	useEffect(() => {
-		const updateUser = async () => {
-			const app = firebaseInit();
-			const dbRef = ref(getDatabase(app));
-			const childRef = child(dbRef, `users/${user?.id}`);
-			await update(childRef, {
-				image: user?.imageUrl
-			})
-
-		}
-		updateUser();
-	}, [user?.imageUrl])
-
-
-	useEffect(() => {
-		const updateUser = async () => {
-			const app = firebaseInit();
-			const dbRef = ref(getDatabase(app));
-			const childRef = child(dbRef, `users/${user?.id}`);
+	const app = firebaseInit();
+	const db = getFirestore(app);
+	const userRef = doc(collection(db, "users"), `${user?.id}`);
+	// console.log(route.params)
 	
-			await update(childRef, {
-				firstName: user?.firstName,
-				lastName: user?.lastName
-			})
-		}
+
+	useEffect(() => {
+		const updateUser = async () => {
+			const personalImage = {
+				image: user?.imageUrl,
+			};
+
+			await updateDoc(userRef, personalImage);
+			dispatch(setPersonalData(personalImage));
+		};
 
 		updateUser();
-	}, [user?.firstName, user?.lastName])
+	}, [user?.imageUrl]);
 
+	useEffect(() => {
+		const updateUser = async () => {
+			const personalName = {
+				firstName: user?.firstName,
+				lastName: user?.lastName,
+				firstLast: `${user?.firstName} ${user?.lastName}`.toLowerCase()
+			};
+
+			await updateDoc(userRef, personalName);
+			dispatch(setPersonalData(personalName));
+		};
+
+		updateUser();
+	}, [user?.firstName, user?.lastName]);
 
 	const onCaptureImage = async () => {
 		const result = await ImagePicker.launchImageLibraryAsync({
@@ -71,19 +79,26 @@ export const ProfileScreen = ({ navigation, route }) => {
 		}
 	};
 
+	const myAge = isMyInfoExist && personalData.age ? `, ${personalData.age}` : "";
+	const myLocation = isMyInfoExist && personalData.location ? personalData.location : "";
+	const media = tabs ? personalData.socialMedia ?? [] : socialMedia ?? [];
+	const chips = tabs ? personalData.interests ?? [] : interests ?? [];
+	const isPropsUserInfoDisabled = (!aboutMe && !interests?.length) || privacy?.privateAccount;
+
+	
 	return (
 		<>
 			<Header isSignedIn={isSignedIn} />
 			{tabs && isBannerVisible && <Banner setIsBannerVisible={setIsBannerVisible} isSignedIn={isSignedIn} />}
-			<Wrapper>
-				<TouchableOpacity onPress={navigation.goBack} style={tw`flex-row gap-x-2 items-center py-4`}>
-					<Ionicons name="chevron-back" size={24} color={theme.sec_btn} />
-					<Text style={tw.style(`text-base`, { fontFamily: "i_medium", color: theme.sec_btn })}>Catalogue</Text>
-				</TouchableOpacity>
-				<ScrollView showsVerticalScrollIndicator={false}>
-					<Text style={tw.style(`text-2xl my-4`, { fontFamily: "i_bold", color: theme.accent })}>My profile</Text>
+			<TouchableOpacity onPress={navigation.goBack} style={tw`flex-row gap-x-2 items-center p-4`}>
+				<Ionicons name="chevron-back" size={24} color={theme.sec_btn} />
+				<Text style={tw.style(`text-base`, { fontFamily: "i_medium", color: theme.sec_btn })}>Catalogue</Text>
+			</TouchableOpacity>
+			<ScrollView showsVerticalScrollIndicator={false}>
+				<Text style={tw.style(`text-2xl m-4 mb-0`, { fontFamily: "i_bold", color: theme.accent })}>My profile</Text>
+				<View style={tw`bg-white m-4 rounded-xl shadow`}>
 					<View style={tw`h-[56px] bg-[#9AA0FE] rounded-t-xl`} />
-					<View style={tw`items-center`}>
+					<View style={tw`items-center px-4`}>
 						<Container onPress={onCaptureImage} style={tw.style(`bg-white rounded-full shadow -mt-10 mb-5`)}>
 							<Image source={{ uri: tabs ? user?.imageUrl : imageSource }} style={tw`w-[96px] h-[96px] rounded-full`} />
 							{tabs && (
@@ -93,44 +108,89 @@ export const ProfileScreen = ({ navigation, route }) => {
 							)}
 						</Container>
 						<Text style={tw.style(`text-2xl capitalize`, { fontFamily: "i_bold", color: theme.pr_text })}>
-							{tabs ? user?.fullName : `${firstName} ${lastName}`}
+							{tabs ? `${user?.fullName}${myAge}` : `${firstName} ${lastName}${age && privacy.age !== true ? `, ${age}` : ""}`}
 						</Text>
-						<Text style={tw.style(`text-sm capitalize`, { fontFamily: "i_medium", color: theme.sec_text })}>
-							{tabs ? "Country, City" : `${country}, ${city}`}
+						<Text style={tw.style(`text-sm`, { fontFamily: "i_medium", color: theme.sec_text })}>
+							{tabs ? myLocation : location && privacy.location !== true ? location : ""}
 						</Text>
 						<View style={tw`flex-row gap-x-2 mt-2`}>
-							{socialMedia?.length > 0 &&
-								socialMedia.map((item, i) => (
-									<TouchableOpacity key={i}>
-										<Image source={socials[item]} />
-									</TouchableOpacity>
-								))}
+							{media.length > 0 &&
+								media.map((item, i) => {
+									for (let key in item) {
+										if (item[key]) {
+											return (
+												<TouchableOpacity key={i}>
+													<Image source={socials[key]} />
+												</TouchableOpacity>
+											);
+										}
+									}
+								})}
 						</View>
 						{tabs ? (
 							<PaperButton style="w-full my-8" title="Edit Profile" onPress={() => navigation.navigate("Settings")} />
 						) : (
-							<PaperButton style="w-full my-8" title="Message" filled onPress={() => navigation.navigate("Chat", { firstName, lastName, image, userId, chatId })} />
+							<PaperButton
+								style="w-full my-8"
+								title="Message"
+								filled
+								onPress={() => {
+									const { tabs, ...rest } = route.params;
+									navigation.navigate("Chat", { ...rest});
+								}}
+							/>
 						)}
-						<Image source={require("../assets/images/Box.png")} />
-						<View style={tw`items-center my-8`}>
-							<Text style={tw.style(`text-lg`, { fontFamily: "i_bold", color: theme.pr_text })}>No details yet</Text>
-							<View style={tw`flex-row items-center justify-center`}>
-								<Text style={tw.style(`text-base`, { fontFamily: "i_medium", color: theme.sec_text })}>
-									{tabs ? "Edit profile to provide more" : "This user has not provided details"}
-								</Text>
-								{tabs && (
-									<Button
-										onPress={() => navigation.navigate("Settings")}
-										style={tw`-ml-2 -mr-2`}
-										labelStyle={tw.style(`text-base`, { fontFamily: "i_semi", color: "#0066CC" })}>
-										details
-									</Button>
+						{!tabs && isPropsUserInfoDisabled ? (
+							<>
+								<Image source={require("../assets/images/Box.png")} />
+								<View style={tw`items-center my-8`}>
+									<Text style={tw.style(`text-lg`, { fontFamily: "i_bold", color: theme.pr_text })}>No details yet</Text>
+									<View style={tw`flex-row items-center justify-center`}>
+										<Text style={tw.style(`text-base`, { fontFamily: "i_medium", color: theme.sec_text })}>
+											{tabs ? "Edit profile to provide more" : "This user has not provided details"}
+										</Text>
+										{tabs && (
+											<Button
+												onPress={() => navigation.navigate("Settings")}
+												style={tw`-ml-2 -mr-2`}
+												labelStyle={tw.style(`text-base`, { fontFamily: "i_semi", color: "#0066CC" })}>
+												details
+											</Button>
+										)}
+									</View>
+								</View>
+							</>
+						) : (
+							<View style={tw`self-start gap-y-5 mt-2 mb-5`}>
+								{(tabs ? !!personalData.aboutMe : !!aboutMe) && (
+									<View style={tw`gap-y-3`}>
+										<Text style={tw.style(`text-lg`, { fontFamily: "i_bold", color: theme.pr_text })}>About me</Text>
+										<Text style={tw.style(`text-base`, { fontFamily: "i_medium", color: theme.pr_text })}>{tabs ? personalData.aboutMe : aboutMe}</Text>
+									</View>
+								)}
+								{(tabs ? !!personalData.interests?.length : !!interests.length) && (
+									<View style={tw`gap-y-4`}>
+										<Text style={tw.style(`text-lg`, { fontFamily: "i_bold", color: theme.pr_text })}>Interests</Text>
+										<View style={tw`flex-row flex-wrap gap-3`}>
+											{chips.length > 0 &&
+												chips.map((chip, index) => (
+													<Pressable
+														key={index}
+														style={tw`flex-row items-center gap-x-2 p-1 pr-4 border rounded-full bg-[#EBEEFF] border-[#6168E4] `}>
+														<View style={tw`bg-[#363A7E] w-[32px] h-[32px] justify-center items-center rounded-full overflow-hidden`}>
+															<Image source={chipIcons[index]} />
+														</View>
+														<Text style={tw.style(`text-base`, { fontFamily: "i_medium", color: theme.pr_text })}>{chip}</Text>
+													</Pressable>
+												))}
+										</View>
+									</View>
 								)}
 							</View>
-						</View>
+						)}
 					</View>
-				</ScrollView>
-			</Wrapper>
+				</View>
+			</ScrollView>
 		</>
 	);
 };

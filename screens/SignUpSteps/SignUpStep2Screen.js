@@ -1,20 +1,25 @@
+import { useEffect } from "react";
 import { useUser } from "@clerk/clerk-expo";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 import { Feather } from '@expo/vector-icons';
 import tw from "twrnc";
 import * as ImagePicker from 'expo-image-picker';
+import { collection, doc, getFirestore, updateDoc } from "firebase/firestore";
+import { useDispatch } from "react-redux";
 
 import { ModalHeader } from "../../components/ModalHeader";
 import { PaddingTop } from "../../components/PaddingTop";
 import { PaperButton } from "../../components/PaperButton";
 import { Wrapper } from "../../components/Wrapper";
 import theme from "../../constants";
-import { child, getDatabase, ref, update } from "firebase/database";
 import { firebaseInit } from "../../firebase/firebaseInit";
-import { useEffect } from "react";
+import { setPersonalData } from "../../redux/personalSlice";
+
+
 
 export const SignUpStep2Screen = ({navigation}) => {
 	const { isSignedIn, user, isLoaded } = useUser();
+	const dispatch = useDispatch();
 
 	const onCaptureImage = async () => {
 		const result = await ImagePicker.launchImageLibraryAsync({
@@ -33,19 +38,20 @@ export const SignUpStep2Screen = ({navigation}) => {
 	};
 
 	useEffect(() => {
-		if (!user?.hasImage) return;
-
 		const updateUser = async () => {
 			const app = firebaseInit();
-			const dbRef = ref(getDatabase(app));
-			const childRef = child(dbRef, `users/${user?.id}`);
-			await update(childRef, {
-				image: user?.imageUrl
-			})
+			const db = getFirestore(app);
+			const userRef =  doc(collection(db, 'users'), `${user?.id}`);
+			const personalImage = {
+				image: !user?.hasImage ? "https://shorturl.at/dADKQ" :  user?.imageUrl
+			};
 
+			await updateDoc(userRef, personalImage);
+			dispatch(setPersonalData(personalImage));
 		}
 		updateUser();
 	}, [user?.hasImage, user?.imageUrl])
+
 
 	return (
 		<Wrapper>

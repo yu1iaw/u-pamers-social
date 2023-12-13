@@ -3,7 +3,8 @@ import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import tw from "twrnc";
 import { FontAwesome } from '@expo/vector-icons';
 import { useSignUp, useUser } from "@clerk/clerk-expo";
-import { child, getDatabase, ref, set } from 'firebase/database';
+import { collection, doc, getFirestore, setDoc } from 'firebase/firestore';
+import { useDispatch } from "react-redux";
 
 import { Input } from "../components/Input";
 import { ModalHeader } from "../components/ModalHeader";
@@ -13,6 +14,9 @@ import { Wrapper } from "../components/Wrapper";
 import theme from "../constants";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { firebaseInit } from "../firebase/firebaseInit";
+import { setPersonalData } from '../redux/personalSlice';
+
+
 
 export const SignUpScreen = ({ navigation }) => {
 	const { isLoaded, signUp, setActive } = useSignUp();
@@ -31,6 +35,8 @@ export const SignUpScreen = ({ navigation }) => {
 	});
 	const [pendingVerification, setPendingVerification] = useState(false);
 	const [code, setCode] = useState("");
+	const dispatch = useDispatch();
+
 
 	const e = error.emailAddress || error.firstName || error.lastName || error.password || error.confirmPassword;
 	const isVerified = !isLoaded || !firstName || !lastName || !emailAddress || !password || password !== confirmPassword;
@@ -41,9 +47,17 @@ export const SignUpScreen = ({ navigation }) => {
 
 		const createUserInDB = async () => {
 			const app = firebaseInit();
-			const dbRef = ref(getDatabase(app));
-			const childRef = child(dbRef, `users/${user?.id}`);
-			await set(childRef, { firstName, lastName, emailAddress, signupDate: new Date().toISOString(), userId: user?.id })
+			const db = getFirestore(app);
+			const userRef = doc(collection(db, 'users'), `${user?.id}`);
+			const userInfo = {
+				firstName, 
+				lastName,
+				firstLast: `${firstName} ${lastName}`.toLowerCase(),
+				emailAddress,
+				id: user?.id
+			};
+			await setDoc(userRef, userInfo);
+			dispatch(setPersonalData(userInfo));
 		}
 		createUserInDB();
 	}, [user?.id])

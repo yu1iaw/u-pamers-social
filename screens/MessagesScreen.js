@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { FlatList, Text, View } from "react-native";
-import tw from 'twrnc';
+import tw from "twrnc";
 import { useUser } from "@clerk/clerk-expo";
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector, useDispatch } from "react-redux";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { Searchbar } from "react-native-paper";
 
@@ -12,79 +12,104 @@ import { ChatUserCard } from "../components/ChatUserCard";
 import { ScrollUpButton } from "../components/ScrollUpButton";
 import { FlatListHeader } from "../components/FlatListHeader";
 import { EmptyList } from "../components/EmptyList";
+import { firebaseInit } from "../firebase/firebaseInit";
+import { collection, getDocs, getFirestore } from "firebase/firestore";
+import { setCompanions } from "../redux/companionsSlice";
+
+let initialChats = [];
 
 
 
 export const MessagesScreen = () => {
-    const [value, setValue] = useState('');
-    const [chats, setChats] = useState([]);
-    const userChats = Object.values(useSelector(state => state.chats.chatData)).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-    const { storedUsers } = useSelector(state => state.users);
-    const { isSignedIn, user } = useUser();
-    const flatListRef = useRef(null);
-    const isFocused = useIsFocused();
-    const navigation = useNavigation();
-
-    const exceptMe = useMemo(() => ({...storedUsers}), [storedUsers]);
-    delete exceptMe[user?.id];
-
- 
-
-    useEffect(() => {
-        if (isFocused) {
-            setChats(userChats)
-        }
-    }, [isFocused])
+	const [value, setValue] = useState("");
+	const [chats, setChats] = useState([]);
+	const { companionsData } = useSelector((state) => state.companions);
+	const { isSignedIn, user } = useUser();
+	const flatListRef = useRef(null);
+	const isFocused = useIsFocused();
+	const navigation = useNavigation();
+	const dispatch = useDispatch();
 
 
-    useEffect(() => {
-        if (!value) return setChats(userChats);
+	useEffect(() => {
+		if (!isFocused) return;
 
-        const timerId = setTimeout(() => {
-            setChats(userChats.filter((chat) => {
-                const dude = chat.users.find(item => item !== user?.id);
-                return exceptMe[dude].firstName.startsWith(value) || exceptMe[dude].lastName.startsWith(value);
-            }))
-        }, 500);
+		const getChats = async () => {
+			const app = firebaseInit();
+			const db = getFirestore(app);
+			const usersRef = collection(db, `users`);
+			const chatsRef = collection(db, `users/${user?.id}/chats`);
+			const usersSnapshot = await getDocs(usersRef);
+			const chatsSnapshot = await getDocs(chatsRef);
 
-        return () => {
-            clearTimeout(timerId);
-        }
-    }, [value])
-  
+			const myChats = chatsSnapshot.docs
+				.sort((a, b) => new Date(b.data().updatedAt) - new Date(a.data().updatedAt))
+				.map((doc) => {
+					// if (!companionsData[doc.id]) {
+						const missingUser = usersSnapshot.docs.find((d) => d.id === doc.id);
+						if (missingUser) {
+							dispatch(setCompanions({ otherUserId: missingUser.id, otherUserData: missingUser.data() }));
+						}
+					// }
+					return {id: doc.id, ...doc.data()};
+				});
 
-    const handlePress = () => {
-        flatListRef.current.scrollToIndex({ index: 0 })
-    }
+			setChats(myChats);
+			initialChats = myChats;
+		};
+		getChats();
+	}, [isFocused]);
 
 
-    return (
-        <>
-            <Header isSignedIn={isSignedIn} />
-            <Wrapper>
-                <FlatListHeader value={value} onChangeText={setValue} />
-                <FlatList
-                    ListEmptyComponent={
-                        <EmptyList 
-                            source={require("../assets/images/Box.png")} 
-                            title="No messages found"
-                            subtitle="Start a new conversation with U-pamers"
-                        />
-                    }
-                    ref={(ref) => flatListRef.current = ref}
-                    showsVerticalScrollIndicator={false}
-                    data={chats}
-                    renderItem={({item, index}) => {
-                        const dude = item.users.find(uid => uid !== user?.id);
-                        if (!dude) return;
+    
+	useEffect(() => {
+		if (!value && initialChats.length) return setChats(initialChats);
+		let timerId;
 
-                        const otherUser = storedUsers[dude];
-                        return <ChatUserCard user={{...otherUser, key: item.key, latestMessage: item.latestMessageText}} navigation={navigation} style={index == userChats.length - 1 ? '' : 'border-b border-gray-300'} />
-                    }} 
-                />
-                {chats.length > 0 && <ScrollUpButton onPress={handlePress} />}
+		if (value) {
+			timerId = setTimeout(() => {
+				setChats(
+					initialChats.filter((chat) => {
+						return companionsData[chat.id].firstName.startsWith(value) || companionsData[chat.id].lastName.startsWith(value);
+					})
+				);
+			}, 500);
+		}
 
-            </Wrapper>
-        </>
-    )
-}
+		return () => {
+			clearTimeout(timerId);
+		};
+	}, [value]);
+
+
+
+	const handlePress = () => {
+		flatListRef.current.scrollToIndex({ index: 0 });
+	};
+
+
+	return (
+		<>
+			<Header isSignedIn={isSignedIn} />
+			<Wrapper>
+				<FlatListHeader value={value} onChangeText={setValue} />
+				<FlatList
+					ListEmptyComponent={
+						<EmptyList source={require("../assets/images/Box.png")} title="No messages found" subtitle="Start a new conversation with U-pamers" />
+					}
+					ref={(ref) => (flatListRef.current = ref)}
+					showsVerticalScrollIndicator={false}
+					data={chats}
+					renderItem={({ item, index }) => {
+						const otherUser = companionsData[item.id];
+						const chatInfo = item.lastMessage;
+						return (
+							<ChatUserCard user={{ ...otherUser, chatInfo }} navigation={navigation} style={index == chats?.length - 1 ? "" : "border-b border-gray-300"} />
+						);
+					}}
+				/>
+				{chats?.length > 0 && <ScrollUpButton onPress={handlePress} />}
+			</Wrapper>
+		</>
+	);
+};

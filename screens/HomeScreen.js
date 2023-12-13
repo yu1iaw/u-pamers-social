@@ -15,12 +15,11 @@ import { EmptyList } from "../components/EmptyList";
 import theme from "../constants";
 import { ErrorView } from "../components/ErrorView";
 import { firebaseInit } from "../firebase/firebaseInit";
-import { child, get, getDatabase, off, onValue, ref, set } from "firebase/database";
 import { useDispatch, useSelector } from "react-redux";
-import { setStoredUsers } from "../redux/storedUsersSlice";
-import { setChatData } from "../redux/chatSlice";
-import { setMessages } from "../redux/messagesSlice";
+import { setCompanions, setStoredUsers } from "../redux/companionsSlice";
 import { useIsFocused } from "@react-navigation/native";
+import { collection, getDocs, getFirestore } from "firebase/firestore";
+import { setPersonalData } from "../redux/personalSlice";
 
 let initialUsers = [];
 let sortedByLocation = [];
@@ -38,13 +37,12 @@ export const HomeScreen = ({ navigation, route }) => {
 	const [usersList, setUsersList] = useState([]);
 	const [location, setLocation] = useState();
 	const [age, setAge] = useState();
-	const { chatData } = useSelector(state => state.chats);
-	const { storedUsers } = useSelector(state => state.users);
+	const { companionsData } = useSelector(state => state.companions);
 	const flatListRef = useRef(null);
 	const { isSignedIn, user, isLoaded } = useUser();
+	const { signOut } = useAuth();
 	const isFocused = useIsFocused();
 	const dispatch = useDispatch();
-
 
 
 	useEffect(() => {
@@ -61,12 +59,12 @@ export const HomeScreen = ({ navigation, route }) => {
 		let timerId;
 
 		if (location && !age) {
-			sortedByLocation = initialUsers.filter(item => item.city === location || item.country === location);
+			sortedByLocation = initialUsers.filter(item => item.location.includes(location));
 			setUsersList(sortedByLocation);
 		}
 
 		if (location && age) {
-			sortedByLocationAndAge = initialUsers.filter(item => item.age >= age.fromValue && item.age <= age.toValue && (item.city === location || item.country === location));
+			sortedByLocationAndAge = initialUsers.filter(item => item.age >= age.fromValue && item.age <= age.toValue && item.location.includes(location));
 			setUsersList(sortedByLocationAndAge);
 		}
 
@@ -121,119 +119,54 @@ export const HomeScreen = ({ navigation, route }) => {
 	useEffect(() => {
 		if (!user?.id) return;
 
-		const app = firebaseInit();
-        const dbRef = ref(getDatabase(app));
-        const userChatRef = child(dbRef, `userChats/${user?.id}`);
-        const refs = [userChatRef];
+		const getUsers = async () => {
+			const app = firebaseInit();
+			const db = getFirestore(app);
+			const usersRef = collection(db, `users`);
+			const chatsRef = collection(db, `users/${user?.id}/chats`);
+			const usersSnapshot = await getDocs(usersRef);
+            const chatsSnapshot = await getDocs(chatsRef);
+			const data = [];
+	
+			usersSnapshot.forEach(doc => {
+				if (doc.id === user?.id) {
+					dispatch(setPersonalData(doc.data()))
+				}
+				chatsSnapshot.forEach(chat => {
+					if (doc.id === chat.id) {
+						dispatch(setCompanions({ otherUserId: doc.id, otherUserData: doc.data() }))
+					}
+				})
 
-        onValue(userChatRef, querySnapshot => {
-            const chatIdsData = querySnapshot.val() || {};
-            const chatIds = Object.values(chatIdsData);
-
-            const chatData = {};
-            let chatsFoundCount = 0;
-
-            for (let i = 0; i < chatIds.length; i++) {
-                const chatId = chatIds[i];
-                const chatRef = child(dbRef, `chats/${chatId}`);
-                refs.push(chatRef);
-
-                onValue(chatRef, chatSnapshot => {
-                    chatsFoundCount++;
-                    const data = chatSnapshot.val();
-    
-
-                    if (data) {
-                        data.key = chatSnapshot.key;
-
-                        data.users.forEach(userId => {
-                            if (storedUsers[userId]) return;
-
-                            const userRef = child(dbRef, `users/${userId}`);
-                            get(userRef)
-                                .then(userSnapshot => {
-                                    const userSnap = userSnapshot.val();
-                                    dispatch(setStoredUsers({ user: userSnap }))
-                                })
-
-                            refs.push(userRef)
-                        })
-                        chatData[chatSnapshot.key] = data;
-                    }
-
-                    if (chatsFoundCount >= chatIds.length) {
-                        dispatch(setChatData({ chatData }))
-                    }
-                })
-
-                const messagesRef = child(dbRef, `messages/${chatId}`);
-                refs.push(messagesRef);
-
-                onValue(messagesRef, messagesSnapshot => {
-                    const messages = messagesSnapshot.val();
-                    dispatch(setMessages({ chatId, messages }))
-                    
-                })
-            }
-
-        })
-
-		return () => {
-			refs.forEach(ref => off(ref))
+				data.push({...doc.data()})
+			});
+	
+			const users = data.filter(item => item.id !== user?.id);
+			setUsersList(users);
+			initialUsers = users;
+			setLoading(false);
 		}
-		
+
+		getUsers();
 	}, [user?.id]);
 
-
-	useEffect(() => {
-		if (!user?.id) return;
-
-		const getUsersList = async () => {
-			try {
-				const app = firebaseInit();
-				const dbRef = ref(getDatabase(app));
-				const usersRef = child(dbRef, `users`);
-	
-				onValue(usersRef, snapshot => {
-					const usersObj = snapshot.val();
-					delete usersObj[user?.id];
-					const chats = Object.values(chatData);
-					const usersData = Object.values(usersObj);
-
-					const users = usersData.map((user) => {
-						const filteredChat = chats.filter(chat => chat.users.includes(user.userId));
-						if (filteredChat.length) {
-							user.chatId = filteredChat[0].key;
-						}
-						return user;
-					})
-
-					setUsersList(users);
-					initialUsers = users;
-					setLoading(false);
-				})
-			} catch (e) {
-				console.log(e);
-				setError(e.message);
-				setLoading(false);
-			}
-		};
-
-		getUsersList();
-	}, [user?.id, chatData])
 
 
 	useEffect(() => {
 		if (isLoaded && !isSignedIn) {
 			const getUsers = async () => {
 				const app = firebaseInit();
-				const dbRef = ref(getDatabase(app));
-				const usersRef = child(dbRef, `users`);
-				const usersSnapshot = await get(usersRef);
-				const res = usersSnapshot.val();
-				const users = Object.values(res);
-				setUsersList(users);
-				initialUsers = users;
+				const db = getFirestore(app);
+				const usersRef = collection(db, `users`);
+				const usersSnapshot = await getDocs(usersRef);
+				const data = [];
+	
+				usersSnapshot.forEach(doc => {
+					data.push({...doc.data()})
+				});
+
+				setUsersList(data)
+				initialUsers = data;
 				setLoading(false);
 			}
 	
@@ -306,7 +239,7 @@ export const HomeScreen = ({ navigation, route }) => {
 						renderItem={({ item, index }) => {
 							return <UserCard user={item} isSignedIn={isSignedIn} onPress={setShowModal} />}
 						}
-						keyExtractor={(item) => item.userId}
+						keyExtractor={(item) => item.id}
 						ListEmptyComponent={<EmptyList />}
 					/>
 					<PaperPortal showModal={showModal} setShowModal={setShowModal} />

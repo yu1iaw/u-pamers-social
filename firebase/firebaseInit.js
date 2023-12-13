@@ -1,13 +1,14 @@
 import { initializeApp } from "firebase/app";
 
+import { EXPO_PUBLIC_FIRESTORE_API_KEY } from '@env';
+import { EXPO_PUBLIC_FIRESTORE_PROJECT_ID } from '@env';
+
+
+
 export const firebaseInit = () => {
     const firebaseConfig = {
-      apiKey: "AIzaSyDSICz0xbXZL6HN1Z6tNRYGueZ3T0nceYc",
-      authDomain: "noepam-a8c2d.firebaseapp.com",
-      projectId: "noepam-a8c2d",
-      storageBucket: "noepam-a8c2d.appspot.com",
-      messagingSenderId: "972038465449",
-      appId: "1:972038465449:web:bd55a0c713908c36b206b8"
+      apiKey: EXPO_PUBLIC_FIRESTORE_API_KEY,
+      projectId: EXPO_PUBLIC_FIRESTORE_PROJECT_ID,
     };
 
     return initializeApp(firebaseConfig);

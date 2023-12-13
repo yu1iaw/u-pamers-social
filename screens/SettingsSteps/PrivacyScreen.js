@@ -3,34 +3,62 @@ import { useUser } from "@clerk/clerk-expo";
 import { Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 import { Ionicons } from "@expo/vector-icons";
+import { Switch } from "react-native-paper";
+import { collection, doc, getFirestore, updateDoc } from "firebase/firestore";
+import { useDispatch, useSelector } from "react-redux";
 
 import { Wrapper } from "../../components/Wrapper";
 import { Header } from "../../components/Header";
+import { firebaseInit } from "../../firebase/firebaseInit";
+import { setPersonalData } from "../../redux/personalSlice";
 import theme from "../../constants";
-import { Switch } from "react-native-paper";
+
+
 
 export const PrivacyScreen = ({ navigation }) => {
+    const { personalData } = useSelector(state => state.personalInfo);
 	const [privacy, setPrivacy] = useState({
-        privateAccount: false,
-        age: false,
-        location: false,
-        description: false
+        privateAccount: personalData.privacy?.privateAccount || false,
+        age: personalData.privacy?.age || false,
+        location: personalData.privacy?.location || false,
+        description: personalData.privacy?.description || false
     });
-	const { isSignedIn } = useUser();
+	const { isSignedIn, user } = useUser();
+    const dispatch = useDispatch();
 
 
     const onToggleSwitch = (name) => {
         if (name === "privateAccount" && !privacy.privateAccount) {
-            return setPrivacy({privateAccount: true, age: false, location: false, description: false});
+            return setPrivacy({privateAccount: true, age: true, location: true, description: true});
+        }
+        if (name === "privateAccount" && privacy.privateAccount) {
+            return setPrivacy({privateAccount: false, age: false, location: false, description: false});
         }
         setPrivacy({...privacy, [name]: !privacy[name]})
     }
 
-    // useEffect(() => {
-    //     if (privacy.privateAccount) {
-    //         setPrivacy({...privacy, age: false, location: false, description: false})
-    //     }
-    // }, [privacy.privateAccount])
+    useEffect(() => {
+        const timerId = setTimeout(async () => {
+            const app = firebaseInit();
+            const db = getFirestore(app);
+            const userRef = doc(collection(db, 'users'), `${user?.id}`);
+            const userPrivacy = {
+                privateAccount: privacy.privateAccount,
+                age: privacy.age,
+                location: privacy.location,
+                description: privacy.description
+            }
+
+            await updateDoc(userRef, {privacy: userPrivacy});
+            dispatch(setPersonalData({ privacy: userPrivacy }));
+
+        }, 1000)
+
+        return () => {
+            clearTimeout(timerId);
+        }
+    }, [privacy.privateAccount, privacy.age, privacy.location, privacy.description])
+
 
 
 	return (

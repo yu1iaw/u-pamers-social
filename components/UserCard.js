@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useRef, useMemo } from "react";
 import { Image, Pressable, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -8,41 +8,63 @@ import { useDispatch, useSelector } from "react-redux";
 
 import { socials } from "../data";
 import theme from "../constants";
-import { firebaseInit } from "../firebase/firebaseInit";
-import { child, get, getDatabase, ref } from "firebase/database";
+
+
 
 export const UserCard = memo(({ user, isSignedIn, onPress }) => {
+	const { companionsData } = useSelector(state => state.companions);
+	const companion = companionsData[user?.id];
+
 	const imageSource = user?.image ?? "https://shorturl.at/dADKQ";
 	const Container = isSignedIn ? Pressable : View;
 	const navigation = useNavigation();
 
+	const firstName = companion ? companion?.firstName : user?.firstName;
+	const lastName = companion ? companion?.lastName : user?.lastName;
+
+	const privacyLocation = companion && companion?.location && companion?.privacy?.location !== true;
+	const locContent = privacyLocation ? companion?.location : companion && !privacyLocation ? '' : user?.location;
+
+	const ageCondition = companion?.age && companion?.privacy?.age !== true;
+	const privacyAge = companion && ageCondition;
+	const ageContent = privacyAge ? `, ${companion?.age}` : companion && !privacyAge  ? '' : user?.age && user?.privacy?.age !== true ? `, ${user?.age}` : '';
+
+	const media = companion ? companion?.socialMedia ?? [] : user?.socialMedia ?? [];
+
 	const onMessagePress = () => {
-		navigation.navigate("Chat", { ...user });
+		navigation.navigate("Chat", companion ?? { ...user });
 	};
 
 	return (
 		<View style={tw`bg-white p-3 gap-x-3 rounded-xl flex-row items-start justify-between shadow-md`}>
-			<Container onPress={() => navigation.navigate("Profile", { ...user, tabs: false })} style={tw`flex-1 flex-row gap-x-4`}>
+			<Container onPress={() => navigation.navigate("Profile", companion ? {...companion, tabs: false} : { ...user, tabs: false })} style={tw`flex-1 flex-row gap-x-4`}>
 				<View style={tw`justify-start`}>
-					<Image source={{ uri: imageSource }} style={tw`w-[50px] h-[50px] rounded-full bg-gray-200`} />
+					<Image source={{ uri: companion ? companion?.image : imageSource }} style={tw`w-[50px] h-[50px] rounded-full bg-gray-200`} />
 				</View>
 				<View style={tw`flex-1 gap-y-3`}>
 					<Text numberOfLines={2} style={tw.style(`text-lg`, { fontFamily: "i_bold", color: theme.pr_text })}>
-						{user?.firstName} {user?.lastName}
-						{user?.age && user?.privacy?.age !== false ? `, ${user?.age}` : ""}
+						{firstName} {lastName}
+						{ ageContent }
 					</Text>
-					{(user?.city && user?.country) || (user?.location && user?.privacy?.location !== false) ? (
-						<Text style={tw.style(`text-sm -mt-3`, { fontFamily: "i_medium" })}>
-							{user?.city}, {user?.country}
+					{privacyLocation || user?.location && user?.privacy?.location !== true ? (
+						<Text numberOfLines={1} style={tw.style(`text-sm -mt-3`, { fontFamily: "i_medium" })}>
+							{locContent}
 						</Text>
 					) : null}
 					<View style={tw`flex-row gap-x-2`}>
-						{user?.socialMedia?.length > 0 &&
-							user?.socialMedia.map((item, i) => (
-								<TouchableOpacity key={i}>
-									<Image source={socials[item]} />
-								</TouchableOpacity>
-							))}
+						{media.length > 0 &&
+							media.map((item, i) => {
+								for (let key in item) {
+									if (item[key]) {
+										return (
+											<TouchableOpacity key={i}>
+												<Image source={socials[key]} />
+											</TouchableOpacity>
+										)
+									}
+								}
+							})
+						}
 					</View>
 				</View>
 			</Container>

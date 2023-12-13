@@ -15,7 +15,7 @@ export const ChatUserCard = ({user, navigation, style}) => {
                 </View>
                 <View>
                     <Text numberOfLines={1} style={tw.style(`text-base`, { fontFamily: "i_semi", color: theme.pr_text })}>{user.firstName} {user.lastName}</Text>
-                    <Text numberOfLines={1} style={tw.style(`text-xs`, { fontFamily: "i", color: theme.sec_text })}>{user.latestMessage}</Text>
+                    <Text numberOfLines={1} style={tw.style(`text-xs`, { fontFamily: "i", color: theme.sec_text })}>{user.chatInfo}</Text>
                 </View>
             </View>
             <View style={tw`items-end gap-y-1`}>

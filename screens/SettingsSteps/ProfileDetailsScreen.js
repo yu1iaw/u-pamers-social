@@ -1,28 +1,50 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@clerk/clerk-expo";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 import { Ionicons, AntDesign } from "@expo/vector-icons";
 import DateTimePicker from "react-native-modal-datetime-picker";
+import { collection, doc, getFirestore, updateDoc } from "firebase/firestore";
+import { useDispatch, useSelector } from "react-redux";
+import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
+import { EXPO_PUBLIC_GOOGLE_PLACES_API_KEY } from "@env";
 
 import { Header } from "../../components/Header";
 import { Input } from "../../components/Input";
 import { PaperButton } from "../../components/PaperButton";
 import { interests, chipIcons } from "../../data";
 import { PaperPortal } from "../../components/PaperPortal";
+import { firebaseInit } from "../../firebase/firebaseInit";
+import { setPersonalData } from "../../redux/personalSlice";
 import theme from "../../constants";
 
 
 
 export const ProfileDetailsScreen = ({navigation}) => {
+    const { personalData } = useSelector(state => state.personalInfo);
+    const { socialMedia: sm } = personalData;
     const [showModal, setShowModal] = useState(false);
     const [showCalendar, setShowCalendar] = useState(false);
-    const [birth, setBirth] = useState('');
-    const [selectedChips, setSelectedChips] = useState([]);
-    const { isSignedIn } = useUser();
+    const [birth, setBirth] = useState(personalData?.age || '');
+    const [location, setLocation] = useState(personalData?.location || '');
+    const [aboutMe, setAboutMe] = useState(personalData?.aboutMe || '');
+    const [selectedChips, setSelectedChips] = useState(personalData?.interests || []);
+    const [socialMedia, setSocialMedia] = useState({
+        linkedin: sm ? sm[0]?.linkedin : "",
+        instagram: sm ? sm[1]?.instagram : "",
+        telegram: sm ? sm[2]?.telegram : "",
+        facebook: sm ? sm[3]?.facebook : "",
+        skype: sm ? sm[4]?.skype : ""
+    });
+    const { isSignedIn, user } = useUser();
+    const dispatch = useDispatch();
+    
+    
+    const isInputFilled = birth || location || aboutMe || selectedChips.length || socialMedia.linkedin || socialMedia.instagram || socialMedia.telegram || socialMedia.facebook || socialMedia.skype;
+
 
     const handleBackPress = () => {
-        if (birth || selectedChips.length) {
+        if (isInputFilled) {
             setShowModal(true);
         } else {
             navigation.goBack()
@@ -30,7 +52,44 @@ export const ProfileDetailsScreen = ({navigation}) => {
 
     }
 
+    const onChangeText = (text, name) => {
+        setSocialMedia({...socialMedia, [name]: text});
+    }
+    
 
+    const onChangeAboutMeText = (text) => {
+        if (text.length > 500) return;
+
+        setAboutMe(text);
+    }
+
+
+
+    const updateUserProfileDetails = async () => {
+        const app = firebaseInit();
+        const db = getFirestore(app);
+        const userRef = doc(collection(db, 'users'), `${user?.id}`);
+        const userProfileDetails = {
+            age: birth,
+            location,
+            aboutMe,
+            interests: selectedChips,
+            socialMedia: [
+                { linkedin: socialMedia.linkedin },
+                { instagram: socialMedia.instagram },
+                { telegram: socialMedia.telegram },
+                { facebook: socialMedia.facebook },
+                { skype: socialMedia.skype },
+            ],
+        };
+
+        await updateDoc(userRef, userProfileDetails);
+        dispatch(setPersonalData(userProfileDetails));
+        navigation.navigate("Settings");
+    }
+
+    
+  
 	return (
 		<>
 			<Header isSignedIn={isSignedIn} />
@@ -39,7 +98,7 @@ export const ProfileDetailsScreen = ({navigation}) => {
 				<Text style={tw.style(`text-base`, { fontFamily: "i_medium", color: theme.sec_btn })}>Settings</Text>
 			</TouchableOpacity>
             <PaperPortal showModal={showModal} setShowModal={setShowModal} setup />
-			<ScrollView showsVerticalScrollIndicator={false}>
+			<ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="always">
 				<Text style={tw.style(`text-2xl mt-4 px-4`, { fontFamily: "i_bold", color: theme.accent })}>Profile details</Text>
 				<View style={tw`bg-white px-3 py-7 mx-4 my-4 gap-y-3 rounded-lg shadow`}>
                     <Text style={tw.style(`text-lg`, { fontFamily: "i_bold", color: theme.pr_text })}>General info</Text>
@@ -50,48 +109,107 @@ export const ProfileDetailsScreen = ({navigation}) => {
                         onFocus={() => setShowCalendar(true)}
                         value={birth}
                     />
+                    <GooglePlacesAutocomplete
+                        placeholder={location || "Location"}
+                        debounce={500}
+                        minLength={2}
+                        disableScroll
+                        enablePoweredByContainer={false}
+                        styles={toInputBoxStyles}
+                        onPress={(data, details) => {
+                            const city = data.structured_formatting.main_text;
+                            const country = data.structured_formatting.secondary_text.split(',').at(-1).trim();
+                            setLocation(`${city}, ${country}`)
+                        }}
+                        query={{
+                            key: EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,
+                            language: "en",
+                            type: "(cities)"
+                        }}
+                    />
                     <DateTimePicker
                         isVisible={showCalendar}
                         mode="date"
                         onConfirm={(selectedDate) => {
-                            setBirth(selectedDate.toISOString().substring(0, 10).split('-').reverse().join('-'));
+                            const selected = selectedDate.toLocaleDateString('uk-UA').split('.').reverse();
+                            const now = new Date().toLocaleDateString('uk-UA').split('.').reverse();
+                            const diff = now.map((item, i) => item - selected[i]);
+
+                            let age;
+                            if (diff[1] > 0) age = diff[0];
+                            if (diff[1] < 0) age = diff[0] - 1;
+                            if (diff[1] === 0) {
+                                if (diff[2] < 0) age = diff[0] - 1;
+                                else age = diff[0];
+                            }
+
+                            setBirth(age.toString());
                             setShowCalendar(false);
                         }}
                         onCancel={() => setShowCalendar(false)}
                     />
-					<Input 
-                        placeholder={"Location"} 
-                    />
+                   
 					<Input 
                         placeholder={"About me"}
+                        value={aboutMe}
+                        onChangeText={onChangeAboutMeText}
                         multiline
                         numberOfLines={4}
-                        style={'pt-2'}
-                         
-                     />
+                        style={'pt-2 pb-2'}   
+                    />
 				</View>
 				<View style={tw`bg-white px-3 py-7 mx-4 my-4 gap-y-3 rounded-lg shadow`}>
                     <Text style={tw.style(`text-lg`, { fontFamily: "i_bold", color: theme.pr_text })}>Social media</Text>
                     <View style={tw`gap-y-3 mt-6`}>
                         <View style={tw`flex-row gap-x-2 items-center`}>
                             <Image source={require("../../assets/images/linkedin.png")} />
-                            <Input placeholder={"Linkedin URL"} style={'flex-1'} email />
+                            <Input 
+                                placeholder={"Linkedin URL"} 
+                                value={socialMedia.linkedin}
+                                onChangeText={(text) => onChangeText(text, 'linkedin')}
+                                style={'flex-1'} 
+                                email 
+                            />
                         </View>
                         <View style={tw`flex-row gap-x-2 items-center`}>
                             <Image source={require("../../assets/images/instagram.png")} />
-                            <Input placeholder={"Instagram URL"} style={'flex-1'} email />
+                            <Input 
+                                placeholder={"Instagram URL"} 
+                                value={socialMedia.instagram}
+                                onChangeText={(text) => onChangeText(text, 'instagram')}
+                                style={'flex-1'} 
+                                email 
+                            />
                         </View>
                         <View style={tw`flex-row gap-x-2 items-center`}>
                             <Image source={require("../../assets/images/telegram.png")} />
-                            <Input placeholder={"Telegram URL"} style={'flex-1'} email />
+                            <Input 
+                                placeholder={"Telegram URL"} 
+                                value={socialMedia.telegram}
+                                onChangeText={(text) => onChangeText(text, 'telegram')}
+                                style={'flex-1'} 
+                                email 
+                            />
                         </View>
                         <View style={tw`flex-row gap-x-2 items-center`}>
                             <Image source={require("../../assets/images/facebook.png")} />
-                            <Input placeholder={"Facebook URL"} style={'flex-1'} email />
+                            <Input 
+                                placeholder={"Facebook URL"} 
+                                value={socialMedia.facebook}
+                                onChangeText={(text) => onChangeText(text, 'facebook')}
+                                style={'flex-1'} 
+                                email 
+                            />
                         </View>
                         <View style={tw`flex-row gap-x-2 items-center`}>
                             <Image source={require("../../assets/images/skype.png")} />
-                            <Input placeholder={"Skype URL"} style={'flex-1'} email />
+                            <Input 
+                                placeholder={"Skype URL"} 
+                                value={socialMedia.skype}
+                                onChangeText={(text) => onChangeText(text, 'skype')}
+                                style={'flex-1'} 
+                                email 
+                            />
                         </View>
                     </View>
 				</View>
@@ -125,8 +243,38 @@ export const ProfileDetailsScreen = ({navigation}) => {
                         })}
                     </View>
 				</View>
+			    <PaperButton onPress={isInputFilled ? updateUserProfileDetails : () => navigation.navigate("Settings")} title="Save updates" filled style={`mt-5 mx-4 mb-6`} />
 			</ScrollView>
-			<PaperButton title="Save updates" filled style={`mt-5 mx-4 mb-6`} />
 		</>
 	);
 }
+
+
+const toInputBoxStyles = StyleSheet.create({
+	container: {
+		flex: 0,
+        width: "100%",
+        
+		marginVertical: 12,
+		backgroundColor: "white",
+		borderRadius: 4,
+		borderColor: "#9ca3af",
+		borderWidth: 1,
+		overflow: "hidden",
+		zIndex: 50
+	},
+	textInput: {
+        width: "100%",
+        height: 56,
+        fontFamily: "i",
+		fontSize: 16,
+        lineHeight: 24,
+        color: theme.pr_text,
+		backgroundColor: "white",
+        marginBottom: 0
+	},
+	textInputContainer: {
+        width: "100%",
+		paddingHorizontal: 8
+	},
+});
