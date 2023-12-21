@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/clerk-expo";
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 import { Ionicons, AntDesign } from "@expo/vector-icons";
-import DateTimePicker from "react-native-modal-datetime-picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { collection, doc, getFirestore, updateDoc } from "firebase/firestore";
 import { useDispatch, useSelector } from "react-redux";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
@@ -64,7 +64,6 @@ export const ProfileDetailsScreen = ({navigation}) => {
     }
 
 
-
     const updateUserProfileDetails = async () => {
         const app = firebaseInit();
         const db = getFirestore(app);
@@ -88,8 +87,7 @@ export const ProfileDetailsScreen = ({navigation}) => {
         navigation.navigate("Settings");
     }
 
-    
-  
+ 
 	return (
 		<>
 			<Header isSignedIn={isSignedIn} />
@@ -102,13 +100,14 @@ export const ProfileDetailsScreen = ({navigation}) => {
 				<Text style={tw.style(`text-2xl mt-4 px-4`, { fontFamily: "i_bold", color: theme.accent })}>Profile details</Text>
 				<View style={tw`bg-white px-3 py-7 mx-4 my-4 gap-y-3 rounded-lg shadow`}>
                     <Text style={tw.style(`text-lg`, { fontFamily: "i_bold", color: theme.pr_text })}>General info</Text>
-                    <Input 
-                        placeholder={"Date of birth"} 
-                        birth
-                        onChangeText={() => setShowCalendar(true)}
-                        onFocus={() => setShowCalendar(true)}
-                        value={birth}
-                    />
+                    <Pressable onPress={() => setShowCalendar(!showCalendar)}>
+                        <Input 
+                            placeholder={"Date of birth"} 
+                            birth
+                            value={birth}
+                            editable={false}
+                        />
+                    </Pressable>
                     <GooglePlacesAutocomplete
                         placeholder={location || "Location"}
                         debounce={500}
@@ -127,27 +126,31 @@ export const ProfileDetailsScreen = ({navigation}) => {
                             type: "(cities)"
                         }}
                     />
-                    <DateTimePicker
-                        isVisible={showCalendar}
-                        mode="date"
-                        onConfirm={(selectedDate) => {
-                            const selected = selectedDate.toLocaleDateString('uk-UA').split('.').reverse();
-                            const now = new Date().toLocaleDateString('uk-UA').split('.').reverse();
-                            const diff = now.map((item, i) => item - selected[i]);
+                    {showCalendar && (
+                        <DateTimePicker
+                            value={new Date()}
+                            mode="date"
+                            onChange={({type, nativeEvent: {timestamp}}) => {
+                                if (type === "dismissed") return setShowCalendar(false);
+                                setShowCalendar(false);
 
-                            let age;
-                            if (diff[1] > 0) age = diff[0];
-                            if (diff[1] < 0) age = diff[0] - 1;
-                            if (diff[1] === 0) {
-                                if (diff[2] < 0) age = diff[0] - 1;
-                                else age = diff[0];
-                            }
-
-                            setBirth(age.toString());
-                            setShowCalendar(false);
-                        }}
-                        onCancel={() => setShowCalendar(false)}
-                    />
+                                const selected = new Date(timestamp).toLocaleDateString('uk-UA').split('.').reverse();
+                                const now = new Date().toLocaleDateString('uk-UA').split('.').reverse();
+                                const diff = now.map((item, i) => item - selected[i]);
+    
+                                let age;
+                                if (diff[1] > 0) age = diff[0];
+                                if (diff[1] < 0) age = diff[0] - 1;
+                                if (diff[1] === 0) {
+                                    if (diff[2] < 0) age = diff[0] - 1;
+                                    else age = diff[0];
+                                }
+                                if (age < 0) age = 0;
+                                
+                                setBirth(age.toString());
+                            }}
+                        />
+                    )}
                    
 					<Input 
                         placeholder={"About me"}

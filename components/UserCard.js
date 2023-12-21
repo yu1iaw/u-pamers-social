@@ -7,6 +7,7 @@ import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { useDispatch, useSelector } from "react-redux";
 
 import { socials } from "../data";
+import { openURL } from "../utils/openUrl";
 import theme from "../constants";
 
 
@@ -51,13 +52,13 @@ export const UserCard = memo(({ user, isSignedIn, onPress }) => {
 							{locContent}
 						</Text>
 					) : null}
-					<View style={tw`flex-row gap-x-2`}>
+					<View style={tw`flex-row gap-x-0.5 -ml-1`}>
 						{media.length > 0 &&
 							media.map((item, i) => {
 								for (let key in item) {
 									if (item[key]) {
 										return (
-											<TouchableOpacity key={i}>
+											<TouchableOpacity style={tw`px-1`} onPress={() => openURL(item[key])} key={i}>
 												<Image source={socials[key]} />
 											</TouchableOpacity>
 										)

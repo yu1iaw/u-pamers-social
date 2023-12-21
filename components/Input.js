@@ -5,7 +5,7 @@ import theme from '../constants';
 
 
 
-export const Input = ({placeholder, password, birth, email, style, value, onChangeText, onFocus, onBlur, error, disabled, multiline, numberOfLines}) => {
+export const Input = ({placeholder, password, birth, email, style, value, onChangeText, onFocus, onBlur, error, disabled, multiline, numberOfLines, editable}) => {
     return (
         <TextInput 
             mode='outlined'
@@ -24,6 +24,7 @@ export const Input = ({placeholder, password, birth, email, style, value, onChan
             error={error}
             disabled={disabled || false}
             multiline={multiline || false}
+            editable={editable ?? true}
         />
     )
 }

@@ -13,8 +13,9 @@ import { ScrollUpButton } from "../components/ScrollUpButton";
 import { FlatListHeader } from "../components/FlatListHeader";
 import { EmptyList } from "../components/EmptyList";
 import { firebaseInit } from "../firebase/firebaseInit";
-import { collection, getDocs, getFirestore } from "firebase/firestore";
+import { collection, getDocs, getFirestore, or, query, where } from "firebase/firestore";
 import { setCompanions } from "../redux/companionsSlice";
+import { useCallback } from "react";
 
 let initialChats = [];
 
@@ -29,6 +30,7 @@ export const MessagesScreen = () => {
 	const isFocused = useIsFocused();
 	const navigation = useNavigation();
 	const dispatch = useDispatch();
+	
 
 
 	useEffect(() => {
@@ -38,22 +40,29 @@ export const MessagesScreen = () => {
 			const app = firebaseInit();
 			const db = getFirestore(app);
 			const usersRef = collection(db, `users`);
-			const chatsRef = collection(db, `users/${user?.id}/chats`);
 			const usersSnapshot = await getDocs(usersRef);
-			const chatsSnapshot = await getDocs(chatsRef);
 
-			const myChats = chatsSnapshot.docs
+			const q = query(collection(db, 'chats'), or(
+				where("member1", "==", `${user?.id}`),			
+				where("member2", "==", `${user?.id}`),			
+			))
+			const chatsSnapshot = await getDocs(q);
+
+			const myChats = await Promise.all(chatsSnapshot.docs
 				.sort((a, b) => new Date(b.data().updatedAt) - new Date(a.data().updatedAt))
-				.map((doc) => {
-					// if (!companionsData[doc.id]) {
-						const missingUser = usersSnapshot.docs.find((d) => d.id === doc.id);
-						if (missingUser) {
-							dispatch(setCompanions({ otherUserId: missingUser.id, otherUserData: missingUser.data() }));
-						}
-					// }
-					return {id: doc.id, ...doc.data()};
-				});
-
+				.map(async doc => {
+					const q = query(collection(db, 'messages'), where("chatId", "==", doc.id), where("wasRead", "==", false));
+					const messagesSnapshot = await getDocs(q);
+					const unreadMessages = messagesSnapshot.docs.map(message => ({...message.data()})).filter(message => message.sender !== user?.id);
+					
+					const missingUser = usersSnapshot.docs.find(d => d.id !== user?.id && d.id === doc.data().member1 || d.id !== user?.id && d.id === doc.data().member2);
+	
+					if (missingUser && !chats.length) {
+						dispatch(setCompanions({ otherUserId: missingUser.id, otherUserData: missingUser.data() }));
+					}
+					return {...doc.data(), companion: missingUser.id, unreadMessages: unreadMessages.length};
+				}))
+			
 			setChats(myChats);
 			initialChats = myChats;
 		};
@@ -70,7 +79,7 @@ export const MessagesScreen = () => {
 			timerId = setTimeout(() => {
 				setChats(
 					initialChats.filter((chat) => {
-						return companionsData[chat.id].firstName.startsWith(value) || companionsData[chat.id].lastName.startsWith(value);
+						return companionsData[chat.companion].firstName.startsWith(value) || companionsData[chat.companion].lastName.startsWith(value);
 					})
 				);
 			}, 500);
@@ -83,9 +92,9 @@ export const MessagesScreen = () => {
 
 
 
-	const handlePress = () => {
-		flatListRef.current.scrollToIndex({ index: 0 });
-	};
+	const handlePress = useCallback(() => {
+		flatListRef.current?.scrollToIndex({ index: 0 });
+	}, []);
 
 
 	return (
@@ -101,10 +110,22 @@ export const MessagesScreen = () => {
 					showsVerticalScrollIndicator={false}
 					data={chats}
 					renderItem={({ item, index }) => {
-						const otherUser = companionsData[item.id];
+						const { id, firstName, lastName, image } = companionsData[item.companion];
 						const chatInfo = item.lastMessage;
+						const unreadMessages = item.unreadMessages;
+						const updatedAt = item.updatedAt;
 						return (
-							<ChatUserCard user={{ ...otherUser, chatInfo }} navigation={navigation} style={index == chats?.length - 1 ? "" : "border-b border-gray-300"} />
+							<ChatUserCard 
+								userId={id}
+								firstName={firstName}
+								lastName={lastName}
+								image={image}
+								chatInfo={chatInfo} 
+								chatUpdatedAt={updatedAt}
+								unreadMessagesIndicator={unreadMessages} 
+								navigation={navigation} 
+								style={index == chats?.length - 1 ? "" : "border-b border-gray-300"} 
+							/>
 						);
 					}}
 				/>

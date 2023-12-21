@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { FlatList, Text, TouchableOpacity, View } from "react-native";
 import { AntDesign } from "@expo/vector-icons";
 import tw from "twrnc";
@@ -18,7 +18,7 @@ import { firebaseInit } from "../firebase/firebaseInit";
 import { useDispatch, useSelector } from "react-redux";
 import { setCompanions, setStoredUsers } from "../redux/companionsSlice";
 import { useIsFocused } from "@react-navigation/native";
-import { collection, getDocs, getFirestore } from "firebase/firestore";
+import { collection, getDocs, getFirestore, or, query, where } from "firebase/firestore";
 import { setPersonalData } from "../redux/personalSlice";
 
 let initialUsers = [];
@@ -37,11 +37,9 @@ export const HomeScreen = ({ navigation, route }) => {
 	const [usersList, setUsersList] = useState([]);
 	const [location, setLocation] = useState();
 	const [age, setAge] = useState();
-	const { companionsData } = useSelector(state => state.companions);
 	const flatListRef = useRef(null);
 	const { isSignedIn, user, isLoaded } = useUser();
 	const { signOut } = useAuth();
-	const isFocused = useIsFocused();
 	const dispatch = useDispatch();
 
 
@@ -56,20 +54,28 @@ export const HomeScreen = ({ navigation, route }) => {
 
 
 	useEffect(() => {
-		let timerId;
-
 		if (location && !age) {
-			sortedByLocation = initialUsers.filter(item => item.location.includes(location));
+			sortedByLocation = initialUsers.filter(item => {
+				const isUserLocationEnabled = item.location && item.privacy?.location !== true;
+				return isUserLocationEnabled && item.location?.includes(location);
+			});
 			setUsersList(sortedByLocation);
 		}
 
 		if (location && age) {
-			sortedByLocationAndAge = initialUsers.filter(item => item.age >= age.fromValue && item.age <= age.toValue && item.location.includes(location));
+			sortedByLocationAndAge = initialUsers.filter(item => {
+				const isUserLocationEnabled = item.location && item.privacy?.location !== true;
+				const isUserAgeEnabled = item.age && item.privacy?.age !== true;
+				return isUserAgeEnabled && item.age >= age.fromValue && isUserAgeEnabled && item.age <= age.toValue && isUserLocationEnabled && item.location?.includes(location);
+			});
 			setUsersList(sortedByLocationAndAge);
 		}
 
 		if (!location && age) {
-			sortedByAge = initialUsers.filter(item => item.age >= age.fromValue && item.age <= age.toValue);
+			sortedByAge = initialUsers.filter(item => {
+				const isUserAgeEnabled = item.age && item.privacy?.age !== true;
+				return isUserAgeEnabled && item.age >= age.fromValue && isUserAgeEnabled && item.age <= age.toValue;
+			});
 			setUsersList(sortedByAge);
 		}
 
@@ -79,37 +85,23 @@ export const HomeScreen = ({ navigation, route }) => {
 		}
 
 		if (search && location && !age) {
-			timerId = setTimeout(() => {
-				setUsersList(sortedByLocation.filter(item => item.firstName.startsWith(search) || item.lastName.startsWith(search)));
-			}, 500)
+			setUsersList(sortedByLocation.filter(item => item.firstName.startsWith(search) || item.lastName.startsWith(search)));
 		}
 
 		if (search && !location && age) {
-			timerId = setTimeout(() => {
-				setUsersList(sortedByAge.filter(item => item.firstName.startsWith(search) || item.lastName.startsWith(search)));
-			}, 500)
+			setUsersList(sortedByAge.filter(item => item.firstName.startsWith(search) || item.lastName.startsWith(search)));
 		}
 
 		if (search && location && age) {
-			timerId = setTimeout(() => {
-				setUsersList(sortedByLocationAndAge.filter(item => item.firstName.startsWith(search) || item.lastName.startsWith(search)));
-			}, 500)
+			setUsersList(sortedByLocationAndAge.filter(item => item.firstName.startsWith(search) || item.lastName.startsWith(search)));
 		}
 
 		if (search && !location && !age) {
-			timerId = setTimeout(() => {
-				setUsersList(initialUsers.filter(item => item.firstName.startsWith(search) || item.lastName.startsWith(search)));
-			}, 500)
+			setUsersList(initialUsers.filter(item => item.firstName.startsWith(search) || item.lastName.startsWith(search)));
 		}
 
 		if (!search && !location && !age) {
 			setUsersList(initialUsers);
-		}
-
-
-
-		return () => {
-			clearTimeout(timerId);
 		}
 
 	}, [location, age, search])
@@ -118,14 +110,18 @@ export const HomeScreen = ({ navigation, route }) => {
 
 	useEffect(() => {
 		if (!user?.id) return;
-
+		// signOut()
 		const getUsers = async () => {
 			const app = firebaseInit();
 			const db = getFirestore(app);
 			const usersRef = collection(db, `users`);
-			const chatsRef = collection(db, `users/${user?.id}/chats`);
 			const usersSnapshot = await getDocs(usersRef);
-            const chatsSnapshot = await getDocs(chatsRef);
+			const q = query(collection(db, 'chats'), or(
+				where("member1", "==", `${user?.id}`),			
+				where("member2", "==", `${user?.id}`),			
+			))
+			const chatsSnapshot = await getDocs(q);
+
 			const data = [];
 	
 			usersSnapshot.forEach(doc => {
@@ -133,14 +129,14 @@ export const HomeScreen = ({ navigation, route }) => {
 					dispatch(setPersonalData(doc.data()))
 				}
 				chatsSnapshot.forEach(chat => {
-					if (doc.id === chat.id) {
+					if (doc.id !== user?.id && doc.id === chat.data().member1 || doc.id !== user?.id && doc.id === chat.data().member2) {
 						dispatch(setCompanions({ otherUserId: doc.id, otherUserData: doc.data() }))
 					}
 				})
 
 				data.push({...doc.data()})
 			});
-	
+			
 			const users = data.filter(item => item.id !== user?.id);
 			setUsersList(users);
 			initialUsers = users;
@@ -176,9 +172,9 @@ export const HomeScreen = ({ navigation, route }) => {
 		
 
 
-	const handlePress = async () => {
-		flatListRef.current.scrollToIndex({ index: 0 });
-	};
+	const handlePress = useCallback(() => {
+		flatListRef.current?.scrollToIndex({ index: 0 });
+	}, []);
 
 
 	return (
