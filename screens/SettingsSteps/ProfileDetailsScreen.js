@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useUser } from "@clerk/clerk-expo";
 import { Image, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
@@ -38,7 +38,8 @@ export const ProfileDetailsScreen = ({navigation}) => {
     });
     const { isSignedIn, user } = useUser();
     const dispatch = useDispatch();
-    
+    const scrollviewRef = useRef(null);
+    const googleRef = useRef(null);
     
     const isInputFilled = birth || location || aboutMe || selectedChips.length || socialMedia.linkedin || socialMedia.instagram || socialMedia.telegram || socialMedia.facebook || socialMedia.skype;
 
@@ -96,7 +97,11 @@ export const ProfileDetailsScreen = ({navigation}) => {
 				<Text style={tw.style(`text-base`, { fontFamily: "i_medium", color: theme.sec_btn })}>Settings</Text>
 			</TouchableOpacity>
             <PaperPortal showModal={showModal} setShowModal={setShowModal} setup />
-			<ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="always">
+			<ScrollView 
+                ref={ref => scrollviewRef.current = ref}
+                showsVerticalScrollIndicator={false} 
+                keyboardShouldPersistTaps="always"
+            >
 				<Text style={tw.style(`text-2xl mt-4 px-4`, { fontFamily: "i_bold", color: theme.accent })}>Profile details</Text>
 				<View style={tw`bg-white px-3 py-7 mx-4 my-4 gap-y-3 rounded-lg shadow`}>
                     <Text style={tw.style(`text-lg`, { fontFamily: "i_bold", color: theme.pr_text })}>General info</Text>
@@ -108,24 +113,31 @@ export const ProfileDetailsScreen = ({navigation}) => {
                             editable={false}
                         />
                     </Pressable>
-                    <GooglePlacesAutocomplete
-                        placeholder={location || "Location"}
-                        debounce={500}
-                        minLength={2}
-                        disableScroll
-                        enablePoweredByContainer={false}
-                        styles={toInputBoxStyles}
-                        onPress={(data, details) => {
-                            const city = data.structured_formatting.main_text;
-                            const country = data.structured_formatting.secondary_text.split(',').at(-1).trim();
-                            setLocation(`${city}, ${country}`)
-                        }}
-                        query={{
-                            key: EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,
-                            language: "en",
-                            type: "(cities)"
-                        }}
-                    />
+                    <ScrollView
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="always"
+                        onContentSizeChange={() => googleRef.current?.isFocused() && scrollviewRef.current?.scrollTo({x: 0, y: 208, animated: true})}
+                    >
+                        <GooglePlacesAutocomplete
+                            ref={googleRef}
+                            placeholder={location || "Location"}
+                            debounce={500}
+                            minLength={2}
+                            disableScroll
+                            enablePoweredByContainer={false}
+                            styles={toInputBoxStyles}
+                            onPress={(data, details) => {
+                                const city = data.structured_formatting.main_text;
+                                const country = data.structured_formatting.secondary_text.split(',').at(-1).trim();
+                                setLocation(`${city}, ${country}`)
+                            }}
+                            query={{
+                                key: EXPO_PUBLIC_GOOGLE_PLACES_API_KEY,
+                                language: "en",
+                                type: "(cities)"
+                            }}
+                        />
+                    </ScrollView>
                     {showCalendar && (
                         <DateTimePicker
                             value={new Date()}
@@ -151,8 +163,8 @@ export const ProfileDetailsScreen = ({navigation}) => {
                             }}
                         />
                     )}
-                   
-					<Input 
+                               
+                    <Input 
                         placeholder={"About me"}
                         value={aboutMe}
                         onChangeText={onChangeAboutMeText}

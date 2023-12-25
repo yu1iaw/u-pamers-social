@@ -13,7 +13,8 @@ import { PaperButton } from "../../components/PaperButton";
 
 export const ChangePasswordScreen = ({ navigation }) => {
 	const [password, setPassword] = useState("");
-	const { isSignedIn } = useUser();
+	const { isSignedIn, user } = useUser();
+	// console.log(user)
 
 	return (
 		<>

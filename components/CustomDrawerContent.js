@@ -41,7 +41,7 @@ export const CustomDrawerContent = () => {
 			</TouchableOpacity>
 			<View>
 				<Text style={tw.style(`text-2xl`, { fontFamily: "i_bold", color: theme.accent })}>Filters</Text>
-				<Text style={tw.style(`text-xs`, { fontFamily: "i", color: theme.sec_text })}>15777 users found</Text>
+				{/* <Text style={tw.style(`text-xs`, { fontFamily: "i", color: theme.sec_text })}>15777 users found</Text> */}
 			</View>
 			<ScrollView
 				ref={(ref) => (scrollViewRef.current = ref)}

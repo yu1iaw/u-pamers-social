@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { FlatList, Text, View } from "react-native";
 import tw from "twrnc";
 import { useUser } from "@clerk/clerk-expo";
 import { useSelector, useDispatch } from "react-redux";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
-import { Searchbar } from "react-native-paper";
+import { collection, getDocs, getFirestore, or, query, where } from "firebase/firestore";
 
 import { Header } from "../components/Header";
 import { Wrapper } from "../components/Wrapper";
@@ -13,9 +13,8 @@ import { ScrollUpButton } from "../components/ScrollUpButton";
 import { FlatListHeader } from "../components/FlatListHeader";
 import { EmptyList } from "../components/EmptyList";
 import { firebaseInit } from "../firebase/firebaseInit";
-import { collection, getDocs, getFirestore, or, query, where } from "firebase/firestore";
 import { setCompanions } from "../redux/companionsSlice";
-import { useCallback } from "react";
+import { Loader } from '../components/Loader';
 
 let initialChats = [];
 
@@ -24,6 +23,7 @@ let initialChats = [];
 export const MessagesScreen = () => {
 	const [value, setValue] = useState("");
 	const [chats, setChats] = useState([]);
+	const [loading, setLoading] = useState(true);
 	const { companionsData } = useSelector((state) => state.companions);
 	const { isSignedIn, user } = useUser();
 	const flatListRef = useRef(null);
@@ -62,9 +62,9 @@ export const MessagesScreen = () => {
 					}
 					return {...doc.data(), companion: missingUser.id, unreadMessages: unreadMessages.length};
 				}))
-			
-			setChats(myChats);
-			initialChats = myChats;
+				setChats(myChats);
+				initialChats = myChats;
+				setLoading(false);
 		};
 		getChats();
 	}, [isFocused]);
@@ -72,14 +72,17 @@ export const MessagesScreen = () => {
 
     
 	useEffect(() => {
-		if (!value && initialChats.length) return setChats(initialChats);
+		if (!value && initialChats.length) {
+			setLoading(false);
+			return setChats(initialChats);
+		};
 		let timerId;
 
 		if (value) {
 			timerId = setTimeout(() => {
 				setChats(
 					initialChats.filter((chat) => {
-						return companionsData[chat.companion].firstName.startsWith(value) || companionsData[chat.companion].lastName.startsWith(value);
+						return companionsData[chat.companion].firstLast.startsWith(value.toLowerCase()) || companionsData[chat.companion].firstLast?.split(' ')?.at(-1).startsWith(value.toLowerCase());
 					})
 				);
 			}, 500);
@@ -101,35 +104,42 @@ export const MessagesScreen = () => {
 		<>
 			<Header isSignedIn={isSignedIn} />
 			<Wrapper>
-				<FlatListHeader value={value} onChangeText={setValue} />
-				<FlatList
-					ListEmptyComponent={
-						<EmptyList source={require("../assets/images/Box.png")} title="No messages found" subtitle="Start a new conversation with U-pamers" />
-					}
-					ref={(ref) => (flatListRef.current = ref)}
-					showsVerticalScrollIndicator={false}
-					data={chats}
-					renderItem={({ item, index }) => {
-						const { id, firstName, lastName, image } = companionsData[item.companion];
-						const chatInfo = item.lastMessage;
-						const unreadMessages = item.unreadMessages;
-						const updatedAt = item.updatedAt;
-						return (
-							<ChatUserCard 
-								userId={id}
-								firstName={firstName}
-								lastName={lastName}
-								image={image}
-								chatInfo={chatInfo} 
-								chatUpdatedAt={updatedAt}
-								unreadMessagesIndicator={unreadMessages} 
-								navigation={navigation} 
-								style={index == chats?.length - 1 ? "" : "border-b border-gray-300"} 
+				{
+					loading ? <Loader /> : (
+						<>
+							<FlatListHeader value={value} onChangeText={setValue} />
+							<FlatList
+								ListEmptyComponent={
+									<EmptyList source={require("../assets/images/Box.png")} title="No messages found" subtitle="Start a new conversation with U-pamers" />
+								}
+								ref={(ref) => (flatListRef.current = ref)}
+								showsVerticalScrollIndicator={false}
+								data={chats}
+								renderItem={({ item, index }) => {
+									const { id, firstName, lastName, image } = companionsData[item.companion];
+									const chatInfo = item.lastMessage;
+									const unreadMessages = item.unreadMessages;
+									const updatedAt = item.updatedAt;
+									return (
+										<ChatUserCard 
+											userId={id}
+											firstName={firstName}
+											lastName={lastName}
+											image={image}
+											chatInfo={chatInfo} 
+											chatUpdatedAt={updatedAt}
+											unreadMessagesIndicator={unreadMessages} 
+											navigation={navigation} 
+											style={index == chats?.length - 1 ? "" : "border-b border-gray-300"} 
+										/>
+									);
+								}}
 							/>
-						);
-					}}
-				/>
-				{chats?.length > 0 && <ScrollUpButton onPress={handlePress} />}
+							{chats?.length > 0 && <ScrollUpButton onPress={handlePress} />}
+
+						</>
+					)
+				}
 			</Wrapper>
 		</>
 	);

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Text, View } from "react-native";
 import { Searchbar } from "react-native-paper";
 import tw from 'twrnc';
@@ -6,7 +7,7 @@ import theme from '../constants';
 
 
 
-export const FlatListHeader = ({value, onChangeText}) => {
+export const FlatListHeader = memo(({value, onChangeText}) => {
 	return (
 		<View style={tw`my-5`}>
 			<Text style={tw.style(`text-2xl mb-4`, { fontFamily: "i_bold", color: theme.accent })}>Messages</Text>
@@ -18,4 +19,4 @@ export const FlatListHeader = ({value, onChangeText}) => {
 			/>
 		</View>
 	);
-};
+});

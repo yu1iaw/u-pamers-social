@@ -2,9 +2,11 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { FlatList, Text, TouchableOpacity, View } from "react-native";
 import { AntDesign } from "@expo/vector-icons";
 import tw from "twrnc";
-import { Searchbar, ActivityIndicator } from "react-native-paper";
+import { Searchbar } from "react-native-paper";
 import { FlashList } from "@shopify/flash-list";
-import { useUser, useAuth } from "@clerk/clerk-expo";
+import { useUser } from "@clerk/clerk-expo";
+import { useDispatch } from "react-redux";
+import { collection, getDocs, getFirestore, or, query, where } from "firebase/firestore";
 
 import { Header } from "../components/Header";
 import { UserCard } from "../components/UserCard";
@@ -12,19 +14,19 @@ import { ScrollUpButton } from "../components/ScrollUpButton";
 import { PaperPortal } from "../components/PaperPortal";
 import { Banner } from "../components/Banner";
 import { EmptyList } from "../components/EmptyList";
-import theme from "../constants";
 import { ErrorView } from "../components/ErrorView";
+import { Loader } from "../components/Loader";
 import { firebaseInit } from "../firebase/firebaseInit";
-import { useDispatch, useSelector } from "react-redux";
-import { setCompanions, setStoredUsers } from "../redux/companionsSlice";
-import { useIsFocused } from "@react-navigation/native";
-import { collection, getDocs, getFirestore, or, query, where } from "firebase/firestore";
+import { setCompanions } from "../redux/companionsSlice";
 import { setPersonalData } from "../redux/personalSlice";
+import theme from "../constants";
 
 let initialUsers = [];
 let sortedByLocation = [];
 let sortedByAge = [];
 let sortedByLocationAndAge = [];
+
+// console.log(new Date().toLocaleString('en-UK', { hour12: false, weekday: "long", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }))
 
 
 
@@ -39,7 +41,6 @@ export const HomeScreen = ({ navigation, route }) => {
 	const [age, setAge] = useState();
 	const flatListRef = useRef(null);
 	const { isSignedIn, user, isLoaded } = useUser();
-	const { signOut } = useAuth();
 	const dispatch = useDispatch();
 
 
@@ -54,6 +55,8 @@ export const HomeScreen = ({ navigation, route }) => {
 
 
 	useEffect(() => {
+		if (!search && !location && !age && !initialUsers.length) return;
+
 		if (location && !age) {
 			sortedByLocation = initialUsers.filter(item => {
 				const isUserLocationEnabled = item.location && item.privacy?.location !== true;
@@ -85,19 +88,19 @@ export const HomeScreen = ({ navigation, route }) => {
 		}
 
 		if (search && location && !age) {
-			setUsersList(sortedByLocation.filter(item => item.firstName.startsWith(search) || item.lastName.startsWith(search)));
+			setUsersList(sortedByLocation.filter(item => item.firstLast.startsWith(search.toLowerCase()) || item.firstLast.split(' ').at(-1).startsWith(search.toLowerCase())));
 		}
 
 		if (search && !location && age) {
-			setUsersList(sortedByAge.filter(item => item.firstName.startsWith(search) || item.lastName.startsWith(search)));
+			setUsersList(sortedByAge.filter(item => item.firstLast.startsWith(search.toLowerCase()) || item.firstLast.split(' ').at(-1).startsWith(search.toLowerCase())));
 		}
 
 		if (search && location && age) {
-			setUsersList(sortedByLocationAndAge.filter(item => item.firstName.startsWith(search) || item.lastName.startsWith(search)));
+			setUsersList(sortedByLocationAndAge.filter(item => item.firstLast.startsWith(search.toLowerCase()) || item.firstLast.split(' ').at(-1).startsWith(search.toLowerCase())));
 		}
 
 		if (search && !location && !age) {
-			setUsersList(initialUsers.filter(item => item.firstName.startsWith(search) || item.lastName.startsWith(search)));
+			setUsersList(initialUsers.filter(item => item.firstLast.startsWith(search.toLowerCase()) || item.firstLast.split(' ').at(-1).startsWith(search.toLowerCase())));
 		}
 
 		if (!search && !location && !age) {
@@ -110,37 +113,43 @@ export const HomeScreen = ({ navigation, route }) => {
 
 	useEffect(() => {
 		if (!user?.id) return;
-		// signOut()
+
 		const getUsers = async () => {
-			const app = firebaseInit();
-			const db = getFirestore(app);
-			const usersRef = collection(db, `users`);
-			const usersSnapshot = await getDocs(usersRef);
-			const q = query(collection(db, 'chats'), or(
-				where("member1", "==", `${user?.id}`),			
-				where("member2", "==", `${user?.id}`),			
-			))
-			const chatsSnapshot = await getDocs(q);
-
-			const data = [];
+			try {
+				// throw new Error('some error occured')
+				const app = firebaseInit();
+				const db = getFirestore(app);
+				const usersRef = collection(db, `users`);
+				const usersSnapshot = await getDocs(usersRef);
+				const q = query(collection(db, 'chats'), or(
+					where("member1", "==", `${user?.id}`),			
+					where("member2", "==", `${user?.id}`),			
+				))
+				const chatsSnapshot = await getDocs(q);
 	
-			usersSnapshot.forEach(doc => {
-				if (doc.id === user?.id) {
-					dispatch(setPersonalData(doc.data()))
-				}
-				chatsSnapshot.forEach(chat => {
-					if (doc.id !== user?.id && doc.id === chat.data().member1 || doc.id !== user?.id && doc.id === chat.data().member2) {
-						dispatch(setCompanions({ otherUserId: doc.id, otherUserData: doc.data() }))
+				const data = [];
+		
+				usersSnapshot.forEach(doc => {
+					if (doc.id === user?.id) {
+						dispatch(setPersonalData(doc.data()))
 					}
-				})
-
-				data.push({...doc.data()})
-			});
-			
-			const users = data.filter(item => item.id !== user?.id);
-			setUsersList(users);
-			initialUsers = users;
-			setLoading(false);
+					chatsSnapshot.forEach(chat => {
+						if (doc.id !== user?.id && doc.id === chat.data().member1 || doc.id !== user?.id && doc.id === chat.data().member2) {
+							dispatch(setCompanions({ otherUserId: doc.id, otherUserData: doc.data() }))
+						}
+					})
+	
+					data.push({...doc.data()})
+				});
+				
+				const users = data.filter(item => item.id !== user?.id);
+				setUsersList(users);
+				initialUsers = users;
+			} catch (e) {
+				setError(e.message);
+			} finally {
+				setLoading(false);
+			}
 		}
 
 		getUsers();
@@ -150,28 +159,34 @@ export const HomeScreen = ({ navigation, route }) => {
 
 	useEffect(() => {
 		if (isLoaded && !isSignedIn) {
-			const getUsers = async () => {
-				const app = firebaseInit();
-				const db = getFirestore(app);
-				const usersRef = collection(db, `users`);
-				const usersSnapshot = await getDocs(usersRef);
-				const data = [];
-	
-				usersSnapshot.forEach(doc => {
-					data.push({...doc.data()})
-				});
 
-				setUsersList(data)
-				initialUsers = data;
-				setLoading(false);
+			const getUsers = async () => {
+				try {
+					const app = firebaseInit();
+					const db = getFirestore(app);
+					const usersRef = collection(db, `users`);
+					const usersSnapshot = await getDocs(usersRef);
+					const data = [];
+			
+					usersSnapshot.forEach(doc => {
+						data.push({...doc.data()})
+					});
+			
+					setUsersList(data)
+					initialUsers = data;
+					setError('');
+				} catch(e) {
+					setError(e.message);
+				} finally {
+					setLoading(false);
+				}
 			}
-	
 			getUsers();
 		}
 	}, [isLoaded, isSignedIn])
+
+
 		
-
-
 	const handlePress = useCallback(() => {
 		flatListRef.current?.scrollToIndex({ index: 0 });
 	}, []);
@@ -182,11 +197,7 @@ export const HomeScreen = ({ navigation, route }) => {
 		<>
 			<Header isSignedIn={isSignedIn} />
 			{isBannerVisible && <Banner setIsBannerVisible={setIsBannerVisible} isSignedIn={isSignedIn} />}
-			{loading ? (
-				<View style={tw`flex-1 items-center justify-center`}>
-					<ActivityIndicator size={49} color="#0078ff" />
-				</View>
-			) : (
+			{loading ? <Loader /> : (
 				<>
 					<View style={tw`bg-white pb-5 px-3 shadow`}>
 						<View style={tw`pt-5 flex-row items-center gap-x-3`}>
