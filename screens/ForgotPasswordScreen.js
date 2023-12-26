@@ -28,8 +28,7 @@ export const ForgotPasswordScreen = ({ navigation }) => {
 			navigation.navigate("ForgotPasswordStep2", { email })
 
         } catch(e) {
-            alert(e.errors[0].message)
-            console.log(e.errors)
+            alert(e.errors[0].message);
         }
     }
 

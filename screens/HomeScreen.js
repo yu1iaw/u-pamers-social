@@ -116,7 +116,6 @@ export const HomeScreen = ({ navigation, route }) => {
 
 		const getUsers = async () => {
 			try {
-				// throw new Error('some error occured')
 				const app = firebaseInit();
 				const db = getFirestore(app);
 				const usersRef = collection(db, `users`);

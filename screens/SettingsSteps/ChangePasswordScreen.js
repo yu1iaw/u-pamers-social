@@ -1,21 +1,63 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@clerk/clerk-expo";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Header } from "../../components/Header";
-import theme from "../../constants";
 import { Input } from "../../components/Input";
 import { PaperButton } from "../../components/PaperButton";
+import { ErrorMessage } from "../../components/ErrorMessage";
+import theme from "../../constants";
 
 
 
 export const ChangePasswordScreen = ({ navigation }) => {
 	const [password, setPassword] = useState("");
-	const { isSignedIn, user } = useUser();
-	// console.log(user)
+	const [newPassword, setNewPassword] = useState("");
+	const [confirmPassword, setConfirmPassword] = useState("");
+	const [error, setError] = useState({
+		password: "",
+		newPassword: "",
+		confirmPassword: ""
+	})
+	const { isLoaded, isSignedIn, user } = useUser();
 
+	const isNotVerified = !password || !newPassword || newPassword !== confirmPassword || error.password || error.newPassword || error.confirmPassword;
+	
+
+	const updateClerkPassword = async () => {
+		if (!isLoaded || isNotVerified) return;
+
+		try {
+			await user?.updatePassword({
+				currentPassword: password,
+				newPassword,
+			})
+			alert("Password has changed successfully!");
+			navigation.navigate("Settings");
+			
+		} catch(e) {
+			if (e.errors[0].message.includes('Passwords validation failed.')) {
+				return setError({...error, password: e.errors[0].message});
+			}
+			setError({...error, newPassword: e.errors[0].message})
+		} 
+	} 
+
+
+	useEffect(() => {
+		if (!newPassword || !confirmPassword) return;
+
+		if (newPassword !== confirmPassword) {
+			setError({...error, confirmPassword: "Passwords don't match." });
+		} else {
+			setError({...error, confirmPassword: ""});
+		}
+	}, [newPassword, confirmPassword])
+	
+
+	
 	return (
 		<>
 			<Header isSignedIn={isSignedIn} />
@@ -29,23 +71,49 @@ export const ChangePasswordScreen = ({ navigation }) => {
 					<Input 
                         placeholder={"Current password"} 
                         password 
+						error={error.password}
                         value={password} 
-                        onChangeText={(password) => setPassword(password)} 
+                        onChangeText={(password) => {
+							setError({...error, password: ""});
+							setPassword(password);
+						}} 
                     />
+					{error.password && <ErrorMessage title={error.password} />}
 					<Input 
                         placeholder={"New password"} 
                         password
-                        value={password} 
-                        onChangeText={(password) => setPassword(password)} 
+                        value={newPassword} 
+						error={error.newPassword}
+                        onChangeText={(password) => {
+							setError({...error, newPassword: ""});
+							setNewPassword(password);
+						}} 
                     />
-                    <Text style={tw.style(`text-xs -mt-2 mb-2 ml-1`, { fontFamily: "i", color: theme.accent })}>
-                        Create a strong password that is at least 8 characters long, includes upper-case, lower-case letters, at least 1 digit and 1 special
-                        character.
-                    </Text>
+					{error.newPassword ? <ErrorMessage title={error.newPassword} /> : (
+						<Text style={tw.style(`text-xs -mt-2 mb-2 ml-1`, { fontFamily: "i", color: theme.accent })}>
+							Create a strong password that is at least 8 characters long, includes upper-case, lower-case letters, at least 1 digit and 1 special
+							character.
+						</Text>
+					)}
 					<Input 
                         placeholder={"Confirm new password"} 
-                        password />
-					<PaperButton title="Save password" filled style={`mt-5`} />
+                        password 
+						error={error.confirmPassword}
+						value={confirmPassword}
+						onChangeText={(password) => {
+							setError({...error, confirmPassword: ""});
+							setConfirmPassword(password);
+						}}
+					/>
+					{error.confirmPassword && <ErrorMessage title={error.confirmPassword} />}
+
+					<PaperButton 
+						disabled={isNotVerified} 
+						title="Save password" 
+						filled 
+						style={`mt-5`} 
+						onPress={updateClerkPassword}
+					/>
 				</View>
 			</ScrollView>
 		</>
