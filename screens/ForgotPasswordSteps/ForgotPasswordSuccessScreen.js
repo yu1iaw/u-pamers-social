@@ -1,6 +1,6 @@
-import { useAuth, useUser } from "@clerk/clerk-expo";
+import { useAuth } from "@clerk/clerk-expo";
 import { useEffect } from "react";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { Image, Text, View } from "react-native";
 import tw from "twrnc";
 
 import { ModalHeader } from "../../components/ModalHeader";
@@ -9,11 +9,13 @@ import { PaperButton } from "../../components/PaperButton";
 import { Wrapper } from "../../components/Wrapper";
 import theme from "../../constants";
 
+
+
 export const ForgotPasswordSuccessScreen = ({ navigation }) => {
-	const { isLoaded, signOut } = useAuth();
+	const { signOut } = useAuth();
 
 	useEffect(() => {
-		isLoaded && signOut();
+		signOut();
 	}, [])
 
 	return (

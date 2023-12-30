@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import tw from "twrnc";
-import { FontAwesome } from '@expo/vector-icons';
 import { useSignUp, useUser } from "@clerk/clerk-expo";
 import { collection, doc, getFirestore, setDoc } from 'firebase/firestore';
 import { useDispatch } from "react-redux";
@@ -11,10 +10,10 @@ import { ModalHeader } from "../components/ModalHeader";
 import { PaddingTop } from "../components/PaddingTop";
 import { PaperButton } from "../components/PaperButton";
 import { Wrapper } from "../components/Wrapper";
-import theme from "../constants";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { firebaseInit } from "../firebase/firebaseInit";
 import { setPersonalData } from '../redux/personalSlice';
+import theme from "../constants";
 
 
 
@@ -46,18 +45,22 @@ export const SignUpScreen = ({ navigation }) => {
 		if (!user?.id) return;
 
 		const createUserInDB = async () => {
-			const app = firebaseInit();
-			const db = getFirestore(app);
-			const userRef = doc(collection(db, 'users'), `${user?.id}`);
-			const userInfo = {
-				firstName, 
-				lastName,
-				firstLast: `${firstName} ${lastName}`.toLowerCase(),
-				emailAddress,
-				id: user?.id
-			};
-			await setDoc(userRef, userInfo);
-			dispatch(setPersonalData(userInfo));
+			try {
+				const app = firebaseInit();
+				const db = getFirestore(app);
+				const userRef = doc(collection(db, 'users'), `${user?.id}`);
+				const userInfo = {
+					firstName, 
+					lastName,
+					firstLast: `${firstName} ${lastName}`.toLowerCase(),
+					emailAddress,
+					id: user?.id
+				};
+				await setDoc(userRef, userInfo);
+				dispatch(setPersonalData(userInfo));
+			} catch(e) {
+				console.log(e);
+			}
 		}
 		createUserInDB();
 	}, [user?.id])
@@ -73,7 +76,7 @@ export const SignUpScreen = ({ navigation }) => {
 	}
 
 
-	const onSignUpPress = async () => {
+	const onSignUpPress = useCallback(async () => {
 		if (!isLoaded || isVerified) {
 			return;
 		}
@@ -94,9 +97,9 @@ export const SignUpScreen = ({ navigation }) => {
 		} catch (err) {
 			alert(err.errors[0].message);
 		}
-	};
+	}, [isLoaded, isVerified, firstName, lastName, emailAddress, password]);
 
-	const onPressVerify = async () => {
+	const onPressVerify = useCallback(async () => {
 		if (!isLoaded || !code) {
 			return;
 		}
@@ -112,7 +115,8 @@ export const SignUpScreen = ({ navigation }) => {
 			alert(err.errors[0].longMessage);
 			navigation.goBack();
 		}
-	};
+	}, [isLoaded, code]);
+
 
 	return (
 		<Wrapper>

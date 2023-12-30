@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { FlatList, Text, TouchableOpacity, View } from "react-native";
-import { AntDesign } from "@expo/vector-icons";
+import { FlatList, View } from "react-native";
 import tw from "twrnc";
-import { Searchbar } from "react-native-paper";
-import { FlashList } from "@shopify/flash-list";
 import { useUser } from "@clerk/clerk-expo";
 import { useDispatch } from "react-redux";
 import { collection, getDocs, getFirestore, or, query, where } from "firebase/firestore";
@@ -13,6 +10,8 @@ import { UserCard } from "../components/UserCard";
 import { ScrollUpButton } from "../components/ScrollUpButton";
 import { PaperPortal } from "../components/PaperPortal";
 import { Banner } from "../components/Banner";
+import { MainSearchbar } from "../components/MainSearchbar";
+import { Chip } from "../components/Chip";
 import { EmptyList } from "../components/EmptyList";
 import { ErrorView } from "../components/ErrorView";
 import { Loader } from "../components/Loader";
@@ -190,6 +189,14 @@ export const HomeScreen = ({ navigation, route }) => {
 		flatListRef.current?.scrollToIndex({ index: 0 });
 	}, []);
 
+	const handleLocationChipPress = useCallback(() => {
+		setLocation(undefined);
+	}, [])
+
+	const handleAgeChipPress = useCallback(() => {
+		setAge(undefined);
+	}, [])
+
 
 	return (
 		error ? <ErrorView /> : 
@@ -199,37 +206,31 @@ export const HomeScreen = ({ navigation, route }) => {
 			{loading ? <Loader /> : (
 				<>
 					<View style={tw`bg-white pb-5 px-3 shadow`}>
-						<View style={tw`pt-5 flex-row items-center gap-x-3`}>
-							<Searchbar 
-								placeholder="Search by name" 
-								value={search}
-								onChangeText={setSearch}
-								style={tw`flex-1 bg-white pr-3 border border-[#A5A8BA] rounded-lg`} 
-							/>
-							<TouchableOpacity
-								onPress={() => navigation.openDrawer()}
-								style={tw`bg-white w-[52px] h-[56px] items-center justify-center border-2 border-[${theme.btn}] rounded-lg`}>
-								<AntDesign name="filter" size={24} color={theme.btn} />
-							</TouchableOpacity>
-						</View>
+						<MainSearchbar 
+							value={search}
+							onChangeText={setSearch}
+							navigation={navigation}
+						/>
 						<View style={tw`flex-row w-full gap-x-3`}>
 							{!!location && (	
-								<TouchableOpacity 
-									onPress={() => setLocation(undefined)}
-									style={tw`bg-[#EBEEFF] max-w-[55%] flex-row items-center mt-4 gap-x-1 px-3 py-2 border border-[${theme.btn}] rounded-full`}
-								>
-									<Text numberOfLines={1} style={tw.style(`text-base max-w-[90%]`, { fontFamily: "i_medium", color: theme.pr_text })}>{location}</Text>
-									<AntDesign name="close" size={18} color={theme.pr_text} style={tw`pt-0.5`} />
-								</TouchableOpacity>
+								<Chip
+									onPress={handleLocationChipPress} 
+									buttonStyle={`bg-[#EBEEFF] max-w-[55%] flex-row items-center mt-4 gap-x-1 px-3 py-2 border border-[${theme.btn}] rounded-full`}
+									textStyle={`text-base max-w-[90%] text-[${theme.pr_text}]`}
+									fontFamily='i_medium'
+									text={location}
+									mainChip
+								/>
 							)}
 							{!!age && (
-								<TouchableOpacity 
-									onPress={() => setAge(undefined)}
-									style={tw`bg-[#EBEEFF] max-w-[45%] flex-row items-center mt-4 gap-x-1 px-3 py-2 border border-[${theme.btn}] rounded-full`}
-								>
-									<Text numberOfLines={1} style={tw.style(`text-base`, { fontFamily: "i_medium", color: theme.pr_text })}>{age.fromValue} - {age.toValue} years</Text>
-									<AntDesign name="close" size={18} color={theme.pr_text} style={tw`pt-0.5`} />
-								</TouchableOpacity>
+								<Chip 
+									onPress={handleAgeChipPress}
+									buttonStyle={`bg-[#EBEEFF] max-w-[45%] flex-row items-center mt-4 gap-x-1 px-3 py-2 border border-[${theme.btn}] rounded-full`}
+									textStyle={`text-base text-[${theme.pr_text}]`}
+									fontFamily='i_medium'
+									text={`${age.fromValue} - ${age.toValue} years`}
+									mainChip
+								/>
 							)}
 						</View>
 					</View>

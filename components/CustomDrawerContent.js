@@ -1,15 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Keyboard } from "react-native";
 import tw from "twrnc";
-import { Ionicons, AntDesign } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import SelectDropdown from "react-native-select-dropdown";
-import { useIsFocused, useNavigation } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import RangeSlider from "react-native-range-slider-expo";
 import { GooglePlacesAutocomplete } from "react-native-google-places-autocomplete";
 
 import { PaddingTop } from "./PaddingTop";
 import { Wrapper } from "./Wrapper";
 import { PaperButton } from "./PaperButton";
+import { Chip } from "./Chip";
 import { countries, countriesCode } from "../data";
 import { EXPO_PUBLIC_GOOGLE_PLACES_API_KEY } from "@env";
 import theme from "../constants";
@@ -27,9 +28,25 @@ export const CustomDrawerContent = () => {
 	const scrollViewRef = useRef(null);
 
 
-	const onApplyPress = () => {
+	const onApplyPress = useCallback(() => {
 		navigation.navigate("DrawerHome", { location: city.length ? city : country, age: { fromValue, toValue } });
-	};
+	}, [city, country, fromValue, toValue]);
+
+
+	const handleLocationChipPress = useCallback(() => {
+		if (!city.length) {
+			setCountry("");
+			setCountryCode("");
+			return;
+		} 
+		setCity("");
+	}, [city.length])
+
+
+	const handleRangeChipPress = useCallback(() => {
+		setFromValue(0);
+		setToValue(0);
+	}, [])
 
 
 	return (
@@ -134,34 +151,24 @@ export const CustomDrawerContent = () => {
 			{filter && (
 				<View style={tw.style(`absolute top-[67%] left-4 flex-row gap-x-2`, Keyboard.isVisible() && "hidden")}>
 					{!!country && (
-						<TouchableOpacity
-							onPress={() => {
-								if (!city.length) {
-									setCountry("");
-									setCountryCode("");
-									return;
-								} 
-								setCity("");
-							}}
-							style={tw`bg-[#EBEEFF] flex-row items-center mt-4 gap-x-1 px-2 py-2 border border-[${theme.btn}] rounded-full`}>
-							<Text style={tw.style(`text-sm`, { fontFamily: "i", color: theme.pr_text })}>
-								{city.length ? city.slice(0, 10) : country.slice(0, 10)}
-							</Text>
-							<AntDesign name="close" size={14} color={theme.pr_text} style={tw`pt-0.5`} />
-						</TouchableOpacity>
+						<Chip
+							onPress={handleLocationChipPress}
+							buttonStyle={`bg-[#EBEEFF] flex-row items-center mt-4 gap-x-1 px-2 py-2 border border-[${theme.btn}] rounded-full`}
+							textStyle={`text-sm text-[${theme.pr_text}]`}
+							fontFamily="i"
+							text={city.length ? city.slice(0, 9) : country.slice(0, 10)}
+							iconSize={14}
+						/>
 					)}
 					{fromValue > 0 && toValue > 0 && (
-						<TouchableOpacity
-							onPress={() => {
-								setFromValue(0);
-								setToValue(0);
-							}}
-							style={tw`bg-[#EBEEFF] flex-row items-center mt-4 gap-x-1 px-2 py-2 border border-[${theme.btn}] rounded-full`}>
-							<Text style={tw.style(`text-sm`, { fontFamily: "i", color: theme.pr_text })}>
-								{fromValue} - {toValue} years
-							</Text>
-							<AntDesign name="close" size={14} color={theme.pr_text} style={tw`pt-0.5`} />
-						</TouchableOpacity>
+						<Chip 
+							onPress={handleRangeChipPress}
+							buttonStyle={`bg-[#EBEEFF] flex-row items-center mt-4 gap-x-1 px-2 py-2 border border-[${theme.btn}] rounded-full`}
+							textStyle={`text-sm text-[${theme.pr_text}]`}
+							fontFamily="i"
+							text={`${fromValue} - ${toValue} years`}
+							iconSize={14}
+						/>
 					)}
 				</View>
 			)}
@@ -191,5 +198,9 @@ const toInputBoxStyles = StyleSheet.create({
 	textInputContainer: {
 		paddingHorizontal: 8,
 		alignItems: "center",
+	},
+	row: {
+		backgroundColor: '',
+		paddingVertical: 16,
 	},
 });

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import tw from "twrnc";
 import { useSignIn } from "@clerk/clerk-expo";
 
@@ -15,7 +15,7 @@ import theme from "../constants";
 
 export const ForgotPasswordScreen = ({ navigation }) => {
 	const [email, setEmail] = useState('');
-	const { signIn, setActive, isLoaded } = useSignIn();
+	const { signIn, isLoaded } = useSignIn();
 
 	const onRequestReset = async () => {
 		if (!isLoaded || !email) return;

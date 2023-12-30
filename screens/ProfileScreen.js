@@ -1,20 +1,18 @@
-import { useEffect, useState } from "react";
+import { useState, useCallback } from "react";
 import { useUser } from "@clerk/clerk-expo";
-import { Image, Pressable, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
-import { Ionicons, Feather } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
+import { Ionicons } from "@expo/vector-icons";
 import { Button } from "react-native-paper";
-import { collection, doc, getFirestore, updateDoc } from "firebase/firestore";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 
-import { firebaseInit } from "../firebase/firebaseInit";
 import { Banner } from "../components/Banner";
 import { Header } from "../components/Header";
 import { PaperButton } from "../components/PaperButton";
-import { setPersonalData } from "../redux/personalSlice";
 import { chipIcons, socials } from "../data";
 import { openURL } from "../utils/openUrl";
+import { Chip } from "../components/Chip";
+import { ProfilePhoto } from "../components/ProfilePhoto";
 import theme from "../constants";
 
 
@@ -27,60 +25,21 @@ export const ProfileScreen = ({ navigation, route }) => {
 	const { isSignedIn, user } = useUser();
 	const isMyInfoExist = Object.keys(personalData)?.length && user.id === personalData.id;
 	const companion = companionsData[id];
+	const imageSource = image ?? companion?.image;
 
-	const dispatch = useDispatch();
-	const Container = tabs ? TouchableOpacity : View;
-	const imageSource = image ?? "https://shorturl.at/dADKQ";
-
-	const app = firebaseInit();
-	const db = getFirestore(app);
-	const userRef = doc(collection(db, "users"), `${user?.id}`);
-	// console.log(tabs)
 	
 
-	useEffect(() => {
-		const updateUser = async () => {
-			const personalImage = {
-				image: user?.imageUrl,
-			};
+	const onEditButtonPress = useCallback(() => {
+		navigation.navigate("Settings");
+	}, [])
 
-			await updateDoc(userRef, personalImage);
-			dispatch(setPersonalData(personalImage));
-		};
 
-		updateUser();
-	}, [user?.imageUrl]);
-
-	useEffect(() => {
-		const updateUser = async () => {
-			const personalName = {
-				firstName: user?.firstName,
-				lastName: user?.lastName,
-				firstLast: `${user?.firstName} ${user?.lastName}`.toLowerCase()
-			};
-
-			await updateDoc(userRef, personalName);
-			dispatch(setPersonalData(personalName));
-		};
-
-		updateUser();
-	}, [user?.firstName, user?.lastName]);
-
-	const onCaptureImage = async () => {
-		const result = await ImagePicker.launchImageLibraryAsync({
-			mediaTypes: ImagePicker.MediaTypeOptions.Images,
-			allowsEditing: true,
-			quality: 0.75,
-			base64: true,
-		});
-
-		if (!result.canceled) {
-			const base64 = `data:image/png;base64,${result.assets[0].base64}`;
-			user?.setProfileImage({
-				file: base64,
-			});
-		}
-	};
+	const onMessageButtonPress = useCallback(() => {
+		const { tabs, ...rest } = route.params;
+		const { id, firstName, lastName, image } = companion || {};
+		navigation.navigate("Chat", companion ? { id, firstName, lastName, image } : { ...rest});
+	}, [])
+	
 
 	const myAge = isMyInfoExist && personalData.age ? `, ${personalData.age}` : "";
 	const myLocation = isMyInfoExist && personalData.location ? personalData.location : "";
@@ -105,14 +64,11 @@ export const ProfileScreen = ({ navigation, route }) => {
 				<View style={tw`bg-white m-4 rounded-xl shadow`}>
 					<View style={tw`h-[56px] bg-[#9AA0FE] rounded-t-xl`} />
 					<View style={tw`items-center px-4`}>
-						<Container onPress={onCaptureImage} style={tw.style(`bg-white rounded-full shadow -mt-10 mb-5`)}>
-							<Image source={{ uri: tabs ? user?.imageUrl : companion ? companion?.image : imageSource }} style={tw`w-[96px] h-[96px] rounded-full`} />
-							{tabs && (
-								<View style={tw`absolute bottom-0 right-0 bg-[${theme.btn}] p-2 rounded-lg`}>
-									<Feather name="edit-2" size={16} color="white" />
-								</View>
-							)}
-						</Container>
+						<ProfilePhoto 
+							tabs={tabs}
+							user={user}
+							imageSource={imageSource}
+						/>
 						<Text style={tw.style(`text-2xl capitalize`, { fontFamily: "i_bold", color: theme.pr_text })}>
 							{tabs ? `${user?.fullName}${myAge}` : companion ? `${companion?.firstName} ${companion?.lastName}${companion?.age && companion?.privacy?.age !== true ? `, ${companion?.age}` : ""}` : `${firstName} ${lastName}${age && privacy?.age !== true ? `, ${age}` : ""}`}
 						</Text>
@@ -134,17 +90,13 @@ export const ProfileScreen = ({ navigation, route }) => {
 								})}
 						</View>
 						{tabs ? (
-							<PaperButton style="w-full my-8" title="Edit Profile" onPress={() => navigation.navigate("Settings")} />
+							<PaperButton style="w-full my-8" title="Edit Profile" onPress={onEditButtonPress} />
 						) : (
 							<PaperButton
 								style="w-full my-8"
 								title="Message"
 								filled
-								onPress={() => {
-									const { tabs, ...rest } = route.params;
-									const { id, firstName, lastName, image } = companion || {};
-									navigation.navigate("Chat", companion ? { id, firstName, lastName, image } : { ...rest});
-								}}
+								onPress={onMessageButtonPress}
 							/>
 						)}
 						{!tabs && isPropsUserInfoDisabled && isCompanionInfoDisabled || tabs && isMyInfoDisabled ? (
@@ -181,14 +133,15 @@ export const ProfileScreen = ({ navigation, route }) => {
 										<View style={tw`flex-row flex-wrap gap-3`}>
 											{chips.length > 0 &&
 												chips.map((chip, index) => (
-													<Pressable
+													<Chip
 														key={index}
-														style={tw`flex-row items-center gap-x-2 p-1 pr-4 border rounded-full bg-[#EBEEFF] border-[#6168E4] `}>
-														<View style={tw`bg-[#363A7E] w-[32px] h-[32px] justify-center items-center rounded-full overflow-hidden`}>
-															<Image source={chipIcons[index]} />
-														</View>
-														<Text style={tw.style(`text-base`, { fontFamily: "i_medium", color: theme.pr_text })}>{chip}</Text>
-													</Pressable>
+														buttonStyle={`flex-row items-center gap-x-2 p-1 pr-4 border rounded-full bg-[#EBEEFF] border-[#6168E4]`}
+														textStyle={`text-base text-[${theme.pr_text}]`}
+														fontFamily="i_medium"
+														text={chip}
+														imageSource={chipIcons[index]}
+														profileChip
+													/>
 												))}
 										</View>
 									</View>

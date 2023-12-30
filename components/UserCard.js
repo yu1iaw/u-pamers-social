@@ -1,10 +1,9 @@
-import { memo, useEffect, useRef, useMemo } from "react";
+import { memo } from "react";
 import { Image, Pressable, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useUser } from "@clerk/clerk-expo";
-import { useIsFocused, useNavigation } from "@react-navigation/native";
-import { useDispatch, useSelector } from "react-redux";
+import { useNavigation } from "@react-navigation/native";
+import { useSelector } from "react-redux";
 
 import { socials } from "../data";
 import { openURL } from "../utils/openUrl";

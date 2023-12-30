@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useSignIn } from "@clerk/clerk-expo";
 import { ScrollView, Text, View } from "react-native";
 import tw from 'twrnc';
@@ -21,11 +21,11 @@ export const ForgotPasswordStep3Screen = ({ navigation, route }) => {
 		confirmPassword: ""
 	})
 	const { signIn, setActive, isLoaded } = useSignIn();
-	const isVerified = !password || password !== confirmPassword;
+	const isNotVerified = !password || password !== confirmPassword;
 
 
-	const onReset = async () => {
-		if (!isLoaded || isVerified) return;
+	const onReset = useCallback(async () => {
+		if (!isLoaded || isNotVerified) return;
 
 		try {
 			const result = await signIn.attemptFirstFactor({
@@ -35,11 +35,17 @@ export const ForgotPasswordStep3Screen = ({ navigation, route }) => {
 			});
 
 			await setActive({ session: result.createdSessionId });
-			navigation.navigate("ForgotPasswordSuccess")
+			navigation.navigate("ForgotPasswordSuccess");
 		} catch (e) {
+			if (e.errors[0].code.includes("form_code_incorrect") || e.errors[0].code.includes("verification_failed")) {
+				alert(e.errors[0].longMessage);
+				navigation.goBack();
+				return;
+			}
 			setError({...error, password: e.errors[0].message});
 		}
-	};
+	}, [isLoaded, isNotVerified, password]);
+	
 
 	const onChangeConfirmPasswordText = (text) => {
 		if (text !== password) {
@@ -87,7 +93,7 @@ export const ForgotPasswordStep3Screen = ({ navigation, route }) => {
 						{error.confirmPassword && <ErrorMessage title={error.confirmPassword} />}
 					</View>
 					<PaperButton 
-						disabled={isVerified}
+						disabled={isNotVerified}
 						style="w-full" 
 						title="Save password" 
 						filled 

@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useUser } from "@clerk/clerk-expo";
-import { Image, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
-import { Ionicons, AntDesign } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { collection, doc, getFirestore, updateDoc } from "firebase/firestore";
 import { useDispatch, useSelector } from "react-redux";
@@ -14,6 +14,8 @@ import { Input } from "../../components/Input";
 import { PaperButton } from "../../components/PaperButton";
 import { interests, chipIcons } from "../../data";
 import { PaperPortal } from "../../components/PaperPortal";
+import { ChipsWrapper } from "../../components/ChipsWrapper";
+import { SocialMediaInput } from "../../components/SocialMediaInput";
 import { firebaseInit } from "../../firebase/firebaseInit";
 import { setPersonalData } from "../../redux/personalSlice";
 import theme from "../../constants";
@@ -41,54 +43,63 @@ export const ProfileDetailsScreen = ({navigation}) => {
     const scrollviewRef = useRef(null);
     const googleRef = useRef(null);
     
+    const profileDetailsJson = JSON.stringify({birth, location, aboutMe, selectedChips, socialMedia});
+    const profileDetailsRef = useRef(profileDetailsJson);
+
     const isInputFilled = birth || location || aboutMe || selectedChips.length || socialMedia.linkedin || socialMedia.instagram || socialMedia.telegram || socialMedia.facebook || socialMedia.skype;
 
 
     const handleBackPress = () => {
-        if (isInputFilled) {
+        if (isInputFilled && profileDetailsRef.current !== profileDetailsJson) {
             setShowModal(true);
         } else {
             navigation.goBack()
         }
-
     }
 
-    const onChangeText = (text, name) => {
+    const onChangeText = useCallback((text, name) => {
         setSocialMedia({...socialMedia, [name]: text});
-    }
+    }, [socialMedia])
     
 
     const onChangeAboutMeText = (text) => {
         if (text.length > 500) return;
-
         setAboutMe(text);
     }
 
 
-    const updateUserProfileDetails = async () => {
-        const app = firebaseInit();
-        const db = getFirestore(app);
-        const userRef = doc(collection(db, 'users'), `${user?.id}`);
-        const userProfileDetails = {
-            age: birth,
-            location,
-            aboutMe,
-            interests: selectedChips,
-            socialMedia: [
-                { linkedin: socialMedia.linkedin },
-                { instagram: socialMedia.instagram },
-                { telegram: socialMedia.telegram },
-                { facebook: socialMedia.facebook },
-                { skype: socialMedia.skype },
-            ],
-        };
+    const updateUserProfileDetails = useCallback(async () => {
+        if (isInputFilled && profileDetailsRef.current !== profileDetailsJson) {
+            try {
+                const app = firebaseInit();
+                const db = getFirestore(app);
+                const userRef = doc(collection(db, 'users'), `${user?.id}`);
+                const userProfileDetails = {
+                    age: birth,
+                    location,
+                    aboutMe,
+                    interests: selectedChips,
+                    socialMedia: [
+                        { linkedin: socialMedia.linkedin },
+                        { instagram: socialMedia.instagram },
+                        { telegram: socialMedia.telegram },
+                        { facebook: socialMedia.facebook },
+                        { skype: socialMedia.skype },
+                    ],
+                };
+        
+                await updateDoc(userRef, userProfileDetails);
+                dispatch(setPersonalData(userProfileDetails));   
+            } catch(e) {
+                console.log(e);
+            } 
+        }
 
-        await updateDoc(userRef, userProfileDetails);
-        dispatch(setPersonalData(userProfileDetails));
         navigation.navigate("Settings");
-    }
 
- 
+    }, [birth, location, aboutMe, selectedChips, socialMedia])
+    
+    
 	return (
 		<>
 			<Header isSignedIn={isSignedIn} />
@@ -145,7 +156,6 @@ export const ProfileDetailsScreen = ({navigation}) => {
                             onChange={({type, nativeEvent: {timestamp}}) => {
                                 if (type === "dismissed") return setShowCalendar(false);
                                 setShowCalendar(false);
-
                                 const selected = new Date(timestamp).toLocaleDateString('uk-UA').split('.').reverse();
                                 const now = new Date().toLocaleDateString('uk-UA').split('.').reverse();
                                 const diff = now.map((item, i) => item - selected[i]);
@@ -176,56 +186,41 @@ export const ProfileDetailsScreen = ({navigation}) => {
 				<View style={tw`bg-white px-3 py-7 mx-4 my-4 gap-y-3 rounded-lg shadow`}>
                     <Text style={tw.style(`text-lg`, { fontFamily: "i_bold", color: theme.pr_text })}>Social media</Text>
                     <View style={tw`gap-y-3 mt-6`}>
-                        <View style={tw`flex-row gap-x-2 items-center`}>
-                            <Image source={require("../../assets/images/linkedin.png")} />
-                            <Input 
-                                placeholder={"Linkedin URL"} 
-                                value={socialMedia.linkedin}
-                                onChangeText={(text) => onChangeText(text, 'linkedin')}
-                                style={'flex-1'} 
-                                email 
-                            />
-                        </View>
-                        <View style={tw`flex-row gap-x-2 items-center`}>
-                            <Image source={require("../../assets/images/instagram.png")} />
-                            <Input 
-                                placeholder={"Instagram URL"} 
-                                value={socialMedia.instagram}
-                                onChangeText={(text) => onChangeText(text, 'instagram')}
-                                style={'flex-1'} 
-                                email 
-                            />
-                        </View>
-                        <View style={tw`flex-row gap-x-2 items-center`}>
-                            <Image source={require("../../assets/images/telegram.png")} />
-                            <Input 
-                                placeholder={"Telegram URL"} 
-                                value={socialMedia.telegram}
-                                onChangeText={(text) => onChangeText(text, 'telegram')}
-                                style={'flex-1'} 
-                                email 
-                            />
-                        </View>
-                        <View style={tw`flex-row gap-x-2 items-center`}>
-                            <Image source={require("../../assets/images/facebook.png")} />
-                            <Input 
-                                placeholder={"Facebook URL"} 
-                                value={socialMedia.facebook}
-                                onChangeText={(text) => onChangeText(text, 'facebook')}
-                                style={'flex-1'} 
-                                email 
-                            />
-                        </View>
-                        <View style={tw`flex-row gap-x-2 items-center`}>
-                            <Image source={require("../../assets/images/skype.png")} />
-                            <Input 
-                                placeholder={"Skype URL"} 
-                                value={socialMedia.skype}
-                                onChangeText={(text) => onChangeText(text, 'skype')}
-                                style={'flex-1'} 
-                                email 
-                            />
-                        </View>
+                        <SocialMediaInput 
+                            name="linkedin"
+                            imageSource={require("../../assets/images/linkedin.png")}
+                            placeholder={"Linkedin URL"} 
+                            value={socialMedia.linkedin}
+                            onChangeText={onChangeText}
+                        />
+                        <SocialMediaInput
+                            name="instagram"
+                            imageSource={require("../../assets/images/instagram.png")}
+                            placeholder={"Instagram URL"} 
+                            value={socialMedia.instagram}
+                            onChangeText={onChangeText}
+                        />
+                        <SocialMediaInput 
+                            name="telegram"
+                            imageSource={require("../../assets/images/telegram.png")}
+                            placeholder={"Telegram URL"} 
+                            value={socialMedia.telegram}
+                            onChangeText={onChangeText}
+                        />
+                        <SocialMediaInput 
+                            name="facebook"
+                            imageSource={require("../../assets/images/facebook.png")}
+                            placeholder={"Facebook URL"} 
+                            value={socialMedia.facebook}
+                            onChangeText={onChangeText}
+                        />
+                        <SocialMediaInput 
+                            name="skype"
+                            imageSource={require("../../assets/images/skype.png")}
+                            placeholder={"Skype URL"} 
+                            value={socialMedia.skype}
+                            onChangeText={onChangeText}
+                        />
                     </View>
 				</View>
 				<View style={tw`bg-white px-3 py-7 mx-4 my-4 gap-y-3 rounded-lg shadow`}>
@@ -243,22 +238,22 @@ export const ProfileDetailsScreen = ({navigation}) => {
                             }
 
                             return (
-                                <TouchableOpacity 
-                                    onPress={handlePress} 
+                                <ChipsWrapper
                                     key={index} 
-                                    style={tw`flex-row items-center gap-x-2 p-1 border rounded-full ${isSelected ? 'bg-[#EBEEFF] border-[#6168E4]' : "border-[#a5a8ba]"}`}
-                                >
-                                    <View style={tw`bg-[#363A7E] w-[32px] h-[32px] justify-center items-center rounded-full overflow-hidden`}>
-                                        <Image source={chipIcons[index]} />
-                                    </View>
-                                    <Text style={tw.style(`text-base`, { fontFamily: "i_medium", color: theme.pr_text })}>{item}</Text>
-                                    <AntDesign name={isSelected ? "close" : "plus"} size={18} color={theme.pr_text} />
-                                </TouchableOpacity>
+                                    onPress={handlePress} 
+                                    buttonStyle={`flex-row items-center gap-x-2 p-1 border rounded-full ${isSelected ? 'bg-[#EBEEFF] border-[#6168E4]' : "border-[#a5a8ba]"}`}
+                                    textStyle={`text-base text-[${theme.pr_text}]`}
+                                    fontFamily="i_medium"
+                                    text={item}
+                                    imageSource={chipIcons[index]}
+                                    iconName={isSelected ? "close" : "plus"}   
+                                    selectedChips={selectedChips.length}
+                                />
                             )
                         })}
                     </View>
 				</View>
-			    <PaperButton onPress={isInputFilled ? updateUserProfileDetails : () => navigation.navigate("Settings")} title="Save updates" filled style={`mt-5 mx-4 mb-6`} />
+			    <PaperButton onPress={updateUserProfileDetails} title="Save updates" filled style={`mt-5 mx-4 mb-6`} />
 			</ScrollView>
 		</>
 	);

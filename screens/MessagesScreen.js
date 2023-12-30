@@ -29,8 +29,7 @@ export const MessagesScreen = () => {
 	const flatListRef = useRef(null);
 	const isFocused = useIsFocused();
 	const navigation = useNavigation();
-	const dispatch = useDispatch();
-	
+	const dispatch = useDispatch();	
 
 
 	useEffect(() => {
@@ -115,6 +114,7 @@ export const MessagesScreen = () => {
 								ref={(ref) => (flatListRef.current = ref)}
 								showsVerticalScrollIndicator={false}
 								data={chats}
+								keyExtractor={chat => chat.updatedAt}
 								renderItem={({ item, index }) => {
 									const { id, firstName, lastName, image } = companionsData[item.companion];
 									const chatInfo = item.lastMessage;

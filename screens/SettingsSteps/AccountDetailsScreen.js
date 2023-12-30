@@ -1,39 +1,61 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useUser } from "@clerk/clerk-expo";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import tw from 'twrnc';
 import { Ionicons } from '@expo/vector-icons';
-
+import { collection, doc, getFirestore, updateDoc } from "firebase/firestore";
+import { useDispatch } from "react-redux";
 
 import { Header } from "../../components/Header";
-import theme from '../../constants';
 import { Input } from "../../components/Input";
 import { PaperButton } from "../../components/PaperButton";
 import { firebaseInit } from "../../firebase/firebaseInit";
-import { child, getDatabase, ref, update } from "firebase/database";
+import { setPersonalData } from "../../redux/personalSlice";
+import theme from '../../constants';
 
 
 
 export const AccountDetailsScreen = ({navigation}) => {
+    const dispatch = useDispatch();
     const { isLoaded, isSignedIn, user } = useUser();
     const [name, setName] = useState({
         firstName: user?.firstName,
         lastName: user?.lastName
     });
+    const firstRef = useRef(name.firstName);
+    const lastRef = useRef(name.lastName);
 
 
     const updateUser = async () => {
         if (!isLoaded || !name.firstName || !name.lastName) return;
 
-        await user.update({
-            firstName: name.firstName,
-            lastName: name.lastName,
-        });
+        if (firstRef.current !== name.firstName || lastRef.current !== name.lastName) {
+            await user.update({
+                firstName: name.firstName,
+                lastName: name.lastName,
+            });
+    
+            const personalName = {
+                firstName: name.firstName,
+                lastName: name.lastName,
+                firstLast: `${name.firstName} ${name?.lastName}`.toLowerCase()
+            };
 
-        user.reload();
+            try {
+                const app = firebaseInit();
+                const db = getFirestore(app);
+                const userRef = doc(collection(db, "users"), `${user?.id}`);
+        
+                await updateDoc(userRef, personalName);
+                dispatch(setPersonalData(personalName));
+            } catch(e) {
+                console.log(e);
+            }
+        }
+        // user.reload();
         navigation.navigate("Profile", { tabs: true });
-
 	};
+
 
     return (
         <>

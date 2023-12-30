@@ -43,7 +43,7 @@ export const ChangePasswordScreen = ({ navigation }) => {
 			}
 			setError({...error, newPassword: e.errors[0].message})
 		} 
-	} 
+	};
 
 
 	useEffect(() => {

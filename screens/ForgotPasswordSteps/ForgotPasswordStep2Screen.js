@@ -1,13 +1,11 @@
 import { useState } from "react";
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { Image, ScrollView, Text, View } from "react-native";
 import tw from "twrnc";
-import { useSignIn } from "@clerk/clerk-expo";
 
 import { ModalHeader } from "../../components/ModalHeader";
 import { PaddingTop } from "../../components/PaddingTop";
 import { Wrapper } from "../../components/Wrapper";
 import { PaperButton } from "../../components/PaperButton";
-import { Button } from "react-native-paper";
 import { Input } from "../../components/Input";
 import theme from "../../constants";
 

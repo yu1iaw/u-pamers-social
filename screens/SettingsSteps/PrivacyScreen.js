@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useUser } from "@clerk/clerk-expo";
 import { Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
@@ -26,6 +26,11 @@ export const PrivacyScreen = ({ navigation }) => {
 	const { isSignedIn, user } = useUser();
     const dispatch = useDispatch();
 
+    const privacyJson = JSON.stringify(privacy);
+    const privacyRef = useRef(privacyJson);
+    const countRef = useRef(0);
+
+
 
     const onToggleSwitch = (name) => {
         if (name === "privateAccount" && !privacy.privateAccount) {
@@ -37,21 +42,29 @@ export const PrivacyScreen = ({ navigation }) => {
         setPrivacy({...privacy, [name]: !privacy[name]})
     }
 
+
     useEffect(() => {
-        const timerId = setTimeout(async () => {
-            const app = firebaseInit();
-            const db = getFirestore(app);
-            const userRef = doc(collection(db, 'users'), `${user?.id}`);
-            const userPrivacy = {
-                privateAccount: privacy.privateAccount,
-                age: privacy.age,
-                location: privacy.location,
-                description: privacy.description
+        if (privacyRef.current === privacyJson && !countRef.current) return;
+
+        countRef.current++;
+        let timerId, userPrivacy;
+        
+        if (privacyRef.current !== privacyJson) {
+            userPrivacy = {...privacy};
+        } else {
+            userPrivacy = JSON.parse(privacyJson);
+        }
+        
+        timerId = setTimeout(async () => {
+            try {
+                const app = firebaseInit();
+                const db = getFirestore(app);
+                const userRef = doc(collection(db, 'users'), `${user?.id}`);
+                await updateDoc(userRef, {privacy: userPrivacy});
+                dispatch(setPersonalData({ privacy: userPrivacy }));
+            } catch(e) {
+                console.log(e);
             }
-
-            await updateDoc(userRef, {privacy: userPrivacy});
-            dispatch(setPersonalData({ privacy: userPrivacy }));
-
         }, 1000)
 
         return () => {

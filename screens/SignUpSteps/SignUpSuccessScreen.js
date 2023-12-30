@@ -1,5 +1,4 @@
-import { useUser } from "@clerk/clerk-expo";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { Image, Text, View } from "react-native";
 import tw from "twrnc";
 
 import { ModalHeader } from "../../components/ModalHeader";
@@ -8,9 +7,9 @@ import { PaperButton } from "../../components/PaperButton";
 import { Wrapper } from "../../components/Wrapper";
 import theme from "../../constants";
 
-export const SignUpSuccessScreen = ({navigation}) => {
-	const { isSignedIn, user, isLoaded } = useUser();
 
+
+export const SignUpSuccessScreen = ({navigation}) => {
 	return (
 		<Wrapper>
 			<PaddingTop />

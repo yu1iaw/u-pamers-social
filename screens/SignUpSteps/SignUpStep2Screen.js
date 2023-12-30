@@ -11,43 +11,51 @@ import { ModalHeader } from "../../components/ModalHeader";
 import { PaddingTop } from "../../components/PaddingTop";
 import { PaperButton } from "../../components/PaperButton";
 import { Wrapper } from "../../components/Wrapper";
-import theme from "../../constants";
 import { firebaseInit } from "../../firebase/firebaseInit";
 import { setPersonalData } from "../../redux/personalSlice";
+import theme from "../../constants";
 
 
 
 export const SignUpStep2Screen = ({navigation}) => {
-	const { isSignedIn, user, isLoaded } = useUser();
+	const { user } = useUser();
 	const dispatch = useDispatch();
 
 	const onCaptureImage = async () => {
-		const result = await ImagePicker.launchImageLibraryAsync({
-			mediaTypes: ImagePicker.MediaTypeOptions.Images,
-			allowsEditing: true,
-			quality: 0.75,
-			base64: true,
-		});
-
-		if (!result.canceled) {
-			const base64 = `data:image/png;base64,${result.assets[0].base64}`;
-			user?.setProfileImage({
-				file: base64,
+		try {
+			const result = await ImagePicker.launchImageLibraryAsync({
+				mediaTypes: ImagePicker.MediaTypeOptions.Images,
+				allowsEditing: true,
+				quality: 0.75,
+				base64: true,
 			});
+	
+			if (!result.canceled) {
+				const base64 = `data:image/png;base64,${result.assets[0].base64}`;
+				user?.setProfileImage({
+					file: base64,
+				});
+			}
+		} catch(e) {
+			console.log(e);
 		}
 	};
 
 	useEffect(() => {
 		const updateUser = async () => {
-			const app = firebaseInit();
-			const db = getFirestore(app);
-			const userRef =  doc(collection(db, 'users'), `${user?.id}`);
-			const personalImage = {
-				image: !user?.hasImage ? "https://shorturl.at/dADKQ" :  user?.imageUrl
-			};
-
-			await updateDoc(userRef, personalImage);
-			dispatch(setPersonalData(personalImage));
+			try {
+				const app = firebaseInit();
+				const db = getFirestore(app);
+				const userRef =  doc(collection(db, 'users'), `${user?.id}`);
+				const personalImage = {
+					image: !user?.hasImage ? "https://shorturl.at/dADKQ" :  user?.imageUrl
+				};
+	
+				await updateDoc(userRef, personalImage);
+				dispatch(setPersonalData(personalImage));
+			} catch(e) {
+				console.log(e);
+			}
 		}
 		updateUser();
 	}, [user?.hasImage, user?.imageUrl])

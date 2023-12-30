@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Button } from 'react-native-paper';
 import tw from 'twrnc';
 
@@ -5,7 +6,7 @@ import theme from '../constants';
 
 
 
-export const PaperButton = ({title, filled, style, onPress, disabled}) => {
+export const PaperButton = memo(({title, filled, style, onPress, disabled}) => {
     return (
         <Button 
             mode={filled ? "contained" : "outlined"}
@@ -19,4 +20,4 @@ export const PaperButton = ({title, filled, style, onPress, disabled}) => {
             {title}
         </Button>
     )
-}
+})
