@@ -3,7 +3,8 @@ import { FlatList, View } from "react-native";
 import tw from "twrnc";
 import { useUser } from "@clerk/clerk-expo";
 import { useDispatch } from "react-redux";
-import { collection, getDocs, getFirestore, or, query, where } from "firebase/firestore";
+import { arrayRemove, collection, getDocs, getFirestore, or, query, updateDoc, where, doc } from "firebase/firestore";
+import * as Notifications from 'expo-notifications';
 
 import { Header } from "../components/Header";
 import { UserCard } from "../components/UserCard";
@@ -24,8 +25,6 @@ let initialUsers = [];
 let sortedByLocation = [];
 let sortedByAge = [];
 let sortedByLocationAndAge = [];
-
-// console.log(new Date().toLocaleString('en-UK', { hour12: false, weekday: "long", year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }))
 
 
 
@@ -124,24 +123,35 @@ export const HomeScreen = ({ navigation, route }) => {
 					where("member2", "==", `${user?.id}`),			
 				))
 				const chatsSnapshot = await getDocs(q);
-	
+				const token = (await Notifications.getExpoPushTokenAsync()).data;
+
 				const data = [];
 		
-				usersSnapshot.forEach(doc => {
-					if (doc.id === user?.id) {
-						dispatch(setPersonalData(doc.data()))
+				usersSnapshot.forEach(async document => {
+					if (document.id === user?.id) {
+						dispatch(setPersonalData(document.data()))
 					}
+					
 					chatsSnapshot.forEach(chat => {
-						if (doc.id !== user?.id && doc.id === chat.data().member1 || doc.id !== user?.id && doc.id === chat.data().member2) {
-							dispatch(setCompanions({ otherUserId: doc.id, otherUserData: doc.data() }))
+						if (document.id !== user?.id && document.id === chat.data().member1 || document.id !== user?.id && document.id === chat.data().member2) {
+							dispatch(setCompanions({ otherUserId: document.id, otherUserData: document.data() }))
 						}
 					})
-	
-					data.push({...doc.data()})
+					
+					if (document.id !== user?.id && document.data().pushTokens?.indexOf(token) >= 0) {
+						data.push(document.data());
+						const userRef = doc(usersRef, `${document.id}`);
+						await updateDoc(userRef, {
+							pushTokens: arrayRemove(token)
+						})
+					}
+
+					data.push({...document.data()})
 				});
-				
+
 				const users = data.filter(item => item.id !== user?.id);
 				setUsersList(users);
+				setError('');
 				initialUsers = users;
 			} catch (e) {
 				setError(e.message);

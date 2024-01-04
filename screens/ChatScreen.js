@@ -10,12 +10,10 @@ import { ChatInput } from "../components/ChatInput";
 import { Loader } from "../components/Loader";
 import { CustomChat } from "../components/CustomChat";
 
-let x = 0;
-
 
 
 export const ChatScreen = ({ navigation, route }) => {
-	const { id: otherUserId, firstName, lastName, image } = route.params || {};
+	const { id: otherUserId, firstName, lastName, image, pushTokens } = route.params || {};
 	const [messageText, setMessageText] = useState("");
 	const [messages, setMessages] = useState([]);
 	const [chatId, setChatId] = useState('');
@@ -80,10 +78,6 @@ export const ChatScreen = ({ navigation, route }) => {
 				await updateDoc(doc(db, 'messages', message.messageId), {
 					wasRead: true,
 				})
-				--x;
-				// await updateDoc(doc(db, `chats/${chatId}`), {
-				// 	unreadMessages: arrayRemove(x)
-				// })
 			}
 		})
 	}, [messages.length])
@@ -91,7 +85,7 @@ export const ChatScreen = ({ navigation, route }) => {
 
 	const onSend = useCallback(async () => {
 		if (!messageText) return;
-		++x;
+
 		if (chatId) {
 			// write message only
 			await addDoc(collection(db, 'messages'), {
@@ -125,9 +119,21 @@ export const ChatScreen = ({ navigation, route }) => {
 				wasRead: false
 			})
 		}
-		
+
 		!companionsData[otherUserId] && dispatch(setCompanions({ otherUserId, otherUserData: route.params }))
 		setMessageText('');
+
+		await fetch("https://exp.host/--/api/v2/push/send", {
+			method: "POST",
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				to: companionsData[otherUserId]?.pushTokens ?? pushTokens,
+				title: `${user?.firstName} ${user?.lastName}`,
+				body: messageText,
+			})
+		})
 	}, [messageText]);
 
 

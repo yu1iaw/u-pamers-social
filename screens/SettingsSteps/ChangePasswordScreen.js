@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/clerk-expo";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -34,8 +34,7 @@ export const ChangePasswordScreen = ({ navigation }) => {
 				currentPassword: password,
 				newPassword,
 			})
-			alert("Password has changed successfully!");
-			navigation.navigate("Settings");
+			Alert.alert("Success", "Password has changed successfully!", [{text: "OK", onPress: () => navigation.navigate("Settings")}]);
 			
 		} catch(e) {
 			if (e.errors[0].message.includes('Passwords validation failed.')) {

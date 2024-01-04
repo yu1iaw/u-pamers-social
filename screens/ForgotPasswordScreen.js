@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { Alert, Text, View } from "react-native";
 import tw from "twrnc";
 import { useSignIn } from "@clerk/clerk-expo";
 
@@ -28,7 +28,7 @@ export const ForgotPasswordScreen = ({ navigation }) => {
 			navigation.navigate("ForgotPasswordStep2", { email })
 
         } catch(e) {
-            alert(e.errors[0].message);
+            Alert.alert(e.errors[0].message);
         }
     }
 

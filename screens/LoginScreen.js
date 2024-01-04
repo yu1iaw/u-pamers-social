@@ -1,20 +1,50 @@
 import { useState } from "react";
-import { useSignIn } from "@clerk/clerk-expo";
-import { Image, ScrollView, Text, View } from "react-native";
+import { useSignIn, useUser } from "@clerk/clerk-expo";
+import { Alert, Image, ScrollView, Text, View } from "react-native";
 import tw from "twrnc";
 import { Button } from "react-native-paper";
+import { arrayRemove, arrayUnion, collection, doc, getFirestore, updateDoc } from "firebase/firestore";
+import * as Notifications from 'expo-notifications';
 
 import { Input } from "../components/Input";
 import { ModalHeader } from "../components/ModalHeader";
 import { PaddingTop } from "../components/PaddingTop";
 import { Wrapper } from "../components/Wrapper";
 import { PaperButton } from "../components/PaperButton";
+import { firebaseInit } from "../firebase/firebaseInit";
 import theme from "../constants";
+import { useEffect } from "react";
+
+
 
 export const LoginScreen = ({ navigation }) => {
 	const [emailAddress, setEmailAddress] = useState("");
 	const [password, setPassword] = useState("");
 	const { signIn, setActive, isLoaded } = useSignIn();
+	const { user } = useUser();
+
+
+	useEffect(() => {
+		if (!user?.id) return;
+
+		const updateDeviceToken = async () => {
+			try {
+				const app = firebaseInit();
+				const db = getFirestore(app);
+				const userRef = doc(collection(db, 'users'), `${user?.id}`);
+				const token = (await Notifications.getExpoPushTokenAsync()).data;
+		
+				await updateDoc(userRef, {
+					pushTokens: arrayUnion(token)
+				});
+			} catch(e) {
+				console.log(e);
+			}
+		}
+
+		updateDeviceToken();
+	}, [user?.id])
+
 
 	const onSignInPress = async () => {
 		if (!isLoaded || !emailAddress || !password) return;
@@ -28,7 +58,7 @@ export const LoginScreen = ({ navigation }) => {
 			await setActive({ session: completeSignIn.createdSessionId });
             navigation.goBack();
 		} catch (err) {
-			alert(err.errors[0].message);
+			Alert.alert("Error", err.errors[0].longMessage);
 		}
 	};
 

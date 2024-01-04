@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { useUser } from "@clerk/clerk-expo";
 import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import tw from "twrnc";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Button } from "react-native-paper";
 import { useSelector } from "react-redux";
 
@@ -21,7 +21,7 @@ export const ProfileScreen = ({ navigation, route }) => {
 	const [isBannerVisible, setIsBannerVisible] = useState(true);
 	const { personalData } = useSelector((state) => state.personalInfo);
 	const { companionsData } = useSelector(state => state.companions);
-	const { tabs, firstName, lastName, age, location, image, aboutMe, socialMedia, interests, privacy, id } = route.params;
+	const { tabs, firstName, lastName, age, location, image, aboutMe, socialMedia, interests, privacy, id, pushTokens } = route.params;
 	const { isSignedIn, user } = useUser();
 	const isMyInfoExist = Object.keys(personalData)?.length && user.id === personalData.id;
 	const companion = companionsData[id];
@@ -36,8 +36,8 @@ export const ProfileScreen = ({ navigation, route }) => {
 
 	const onMessageButtonPress = useCallback(() => {
 		const { tabs, ...rest } = route.params;
-		const { id, firstName, lastName, image } = companion || {};
-		navigation.navigate("Chat", companion ? { id, firstName, lastName, image } : { ...rest});
+		const { id, firstName, lastName, image, pushTokens } = companion || {};
+		navigation.navigate("Chat", companion ? { id, firstName, lastName, image, pushTokens } : { ...rest});
 	}, [])
 	
 
@@ -60,7 +60,10 @@ export const ProfileScreen = ({ navigation, route }) => {
 				<Text style={tw.style(`text-base`, { fontFamily: "i_medium", color: theme.sec_btn })}>Catalogue</Text>
 			</TouchableOpacity>
 			<ScrollView showsVerticalScrollIndicator={false}>
-				<Text style={tw.style(`text-2xl m-4 mb-0`, { fontFamily: "i_bold", color: theme.accent })}>My profile</Text>
+				<Text style={tw.style(`text-2xl m-4 mb-0`, { fontFamily: "i_bold", color: theme.accent })}>
+					My profile {""}
+					{ tabs && personalData.privacy?.privateAccount && <MaterialCommunityIcons name="shield-lock-outline" size={24} color={theme.accent} />}
+				</Text>
 				<View style={tw`bg-white m-4 rounded-xl shadow`}>
 					<View style={tw`h-[56px] bg-[#9AA0FE] rounded-t-xl`} />
 					<View style={tw`items-center px-4`}>

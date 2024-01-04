@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Image, Pressable, ScrollView, Text, View } from "react-native";
 import tw from "twrnc";
 import { useSignUp, useUser } from "@clerk/clerk-expo";
 import { collection, doc, getFirestore, setDoc } from 'firebase/firestore';
 import { useDispatch } from "react-redux";
+import * as Notifications from 'expo-notifications';
 
 import { Input } from "../components/Input";
 import { ModalHeader } from "../components/ModalHeader";
@@ -49,15 +50,18 @@ export const SignUpScreen = ({ navigation }) => {
 				const app = firebaseInit();
 				const db = getFirestore(app);
 				const userRef = doc(collection(db, 'users'), `${user?.id}`);
+				const token = (await Notifications.getExpoPushTokenAsync()).data;
 				const userInfo = {
 					firstName, 
 					lastName,
 					firstLast: `${firstName} ${lastName}`.toLowerCase(),
 					emailAddress,
-					id: user?.id
+					id: user?.id,
+					pushTokens: [token]
 				};
 				await setDoc(userRef, userInfo);
 				dispatch(setPersonalData(userInfo));
+				navigation.navigate("SignUpStep2");
 			} catch(e) {
 				console.log(e);
 			}
@@ -95,7 +99,7 @@ export const SignUpScreen = ({ navigation }) => {
 			// change the UI to our pending section.
 			setPendingVerification(true);
 		} catch (err) {
-			alert(err.errors[0].message);
+			Alert.alert("Error", err.errors[0].longMessage);
 		}
 	}, [isLoaded, isVerified, firstName, lastName, emailAddress, password]);
 
@@ -110,10 +114,8 @@ export const SignUpScreen = ({ navigation }) => {
 			});
 
 			await setActive({ session: completeSignUp.createdSessionId });
-			navigation.navigate("SignUpStep2")
 		} catch (err) {
-			alert(err.errors[0].longMessage);
-			navigation.goBack();
+			Alert.alert("Error", err.errors[0].longMessage, [{ text: "OK" }]);
 		}
 	}, [isLoaded, code]);
 

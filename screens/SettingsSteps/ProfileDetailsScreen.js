@@ -46,11 +46,9 @@ export const ProfileDetailsScreen = ({navigation}) => {
     const profileDetailsJson = JSON.stringify({birth, location, aboutMe, selectedChips, socialMedia});
     const profileDetailsRef = useRef(profileDetailsJson);
 
-    const isInputFilled = birth || location || aboutMe || selectedChips.length || socialMedia.linkedin || socialMedia.instagram || socialMedia.telegram || socialMedia.facebook || socialMedia.skype;
-
 
     const handleBackPress = () => {
-        if (isInputFilled && profileDetailsRef.current !== profileDetailsJson) {
+        if (profileDetailsRef.current !== profileDetailsJson) {
             setShowModal(true);
         } else {
             navigation.goBack()
@@ -69,7 +67,7 @@ export const ProfileDetailsScreen = ({navigation}) => {
 
 
     const updateUserProfileDetails = useCallback(async () => {
-        if (isInputFilled && profileDetailsRef.current !== profileDetailsJson) {
+        if (profileDetailsRef.current !== profileDetailsJson) {
             try {
                 const app = firebaseInit();
                 const db = getFirestore(app);

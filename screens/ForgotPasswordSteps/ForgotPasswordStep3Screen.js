@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { useSignIn } from "@clerk/clerk-expo";
-import { ScrollView, Text, View } from "react-native";
+import { Alert, ScrollView, Text, View } from "react-native";
 import tw from 'twrnc';
 
 import { Wrapper } from "../../components/Wrapper";
@@ -38,8 +38,7 @@ export const ForgotPasswordStep3Screen = ({ navigation, route }) => {
 			navigation.navigate("ForgotPasswordSuccess");
 		} catch (e) {
 			if (e.errors[0].code.includes("form_code_incorrect") || e.errors[0].code.includes("verification_failed")) {
-				alert(e.errors[0].longMessage);
-				navigation.goBack();
+				Alert.alert("Error", e.errors[0].longMessage, [{ text: "OK", onPress: () => navigation.goBack() }]);
 				return;
 			}
 			setError({...error, password: e.errors[0].message});

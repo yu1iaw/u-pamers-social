@@ -46,7 +46,7 @@ export const SignUpStep2Screen = ({navigation}) => {
 			try {
 				const app = firebaseInit();
 				const db = getFirestore(app);
-				const userRef =  doc(collection(db, 'users'), `${user?.id}`);
+				const userRef = doc(collection(db, 'users'), `${user?.id}`);
 				const personalImage = {
 					image: !user?.hasImage ? "https://shorturl.at/dADKQ" :  user?.imageUrl
 				};

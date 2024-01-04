@@ -1,7 +1,8 @@
 import 'react-native-gesture-handler';
-import { useCallback, useEffect, useState } from "react";
+import { NavigationContainer } from '@react-navigation/native';
+import { useCallback } from "react";
 import { StatusBar } from "expo-status-bar";
-import { View } from "react-native";
+import { LogBox, View } from "react-native";
 import tw from "twrnc";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
@@ -13,6 +14,7 @@ import { EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY } from '@env';
 
 import { store } from "./redux/store";
 import { AppNavigator } from "./navigation/AppNavigator";
+LogBox.ignoreLogs(['Calling getExpoPushTokenAsync']);
 
 
 const tokenCache = {
@@ -36,7 +38,6 @@ SplashScreen.preventAutoHideAsync();
 
 
 
-
 export default function App() {
 	const [isFontsLoaded] = useFonts({
 		i: require("./assets/fonts/Inter-Regular.ttf"),
@@ -46,8 +47,6 @@ export default function App() {
 	});
 
 
-	
-
 	const onLayout = useCallback(async () => {
 		if (isFontsLoaded) {
 			await SplashScreen.hideAsync();
@@ -56,17 +55,20 @@ export default function App() {
 
 	if (!isFontsLoaded) return null;
 
+
 	return (
-		<Provider store={store}>
-			<ClerkProvider publishableKey={EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
-				<PaperProvider>
-					<View onLayout={onLayout} style={tw`flex-1`}>
-						<StatusBar style="auto" />
-						<AppNavigator />
-					</View>
-				</PaperProvider>
-			</ClerkProvider>
-		</Provider>
+		<NavigationContainer>
+			<Provider store={store}>
+				<ClerkProvider publishableKey={EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
+					<PaperProvider>
+						<View onLayout={onLayout} style={tw`flex-1`}>
+							<StatusBar style="auto" />
+							<AppNavigator />
+						</View>
+					</PaperProvider>
+				</ClerkProvider>
+			</Provider>
+		</NavigationContainer>
 	);
 }
 
