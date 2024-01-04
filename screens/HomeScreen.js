@@ -127,7 +127,7 @@ export const HomeScreen = ({ navigation, route }) => {
 
 				const data = [];
 		
-				usersSnapshot.forEach(async document => {
+				usersSnapshot.forEach(document => {
 					if (document.id === user?.id) {
 						dispatch(setPersonalData(document.data()))
 					}
@@ -137,19 +137,27 @@ export const HomeScreen = ({ navigation, route }) => {
 							dispatch(setCompanions({ otherUserId: document.id, otherUserData: document.data() }))
 						}
 					})
-					
-					if (document.id !== user?.id && document.data().pushTokens?.indexOf(token) >= 0) {
-						data.push(document.data());
-						const userRef = doc(usersRef, `${document.id}`);
-						await updateDoc(userRef, {
-							pushTokens: arrayRemove(token)
-						})
-					}
 
 					data.push({...document.data()})
 				});
 
 				const users = data.filter(item => item.id !== user?.id);
+
+				let index;
+				const duplicatedTokenUser = users.find(user => {
+					if (user.pushTokens?.indexOf(token) >= 0) {
+						index = user.pushTokens?.indexOf(token);
+						return user;
+					}
+				});
+				if (duplicatedTokenUser) {
+					const userRef = doc(usersRef, `${duplicatedTokenUser.id}`);
+						await updateDoc(userRef, {
+							pushTokens: arrayRemove(token)
+						})
+					duplicatedTokenUser.pushTokens?.splice(index, 1);
+				}
+
 				setUsersList(users);
 				setError('');
 				initialUsers = users;
