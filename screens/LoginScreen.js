@@ -3,7 +3,7 @@ import { useSignIn, useUser } from "@clerk/clerk-expo";
 import { Alert, Image, ScrollView, Text, View } from "react-native";
 import tw from "twrnc";
 import { Button } from "react-native-paper";
-import { arrayRemove, arrayUnion, collection, doc, getFirestore, updateDoc } from "firebase/firestore";
+import { arrayUnion, collection, doc, getFirestore, updateDoc } from "firebase/firestore";
 import * as Notifications from 'expo-notifications';
 
 import { Input } from "../components/Input";
@@ -32,11 +32,16 @@ export const LoginScreen = ({ navigation }) => {
 				const app = firebaseInit();
 				const db = getFirestore(app);
 				const userRef = doc(collection(db, 'users'), `${user?.id}`);
+				const authRef = doc(collection(db, 'auths'), `${user?.id}`);
 				const token = (await Notifications.getExpoPushTokenAsync()).data;
 		
 				await updateDoc(userRef, {
 					pushTokens: arrayUnion(token)
 				});
+				await updateDoc(authRef, {
+					lastSignedIn: new Date().toISOString(),
+					token
+				})
 			} catch(e) {
 				console.log(e);
 			}

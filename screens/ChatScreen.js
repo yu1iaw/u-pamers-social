@@ -55,13 +55,10 @@ export const ChatScreen = ({ navigation, route }) => {
 
 		const fetchMessages = async () => {
 			onSnapshot(doc(db, `chats/${chatId}`), async _doc => {
-				const q = query(collection(db, 'messages'), where("chatId", "==", chatId));
-				const messagesSnapshot = await getDocs(q);
-				const messagesArr = messagesSnapshot.docs
-					.map(doc => ({messageId: doc.id, ...doc.data()}))
-					.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-
-				setMessages(messagesArr);		
+				const messagesSnapshot = await getDoc(doc(db, 'messages', chatId));
+				if (messagesSnapshot.exists()) {
+					setMessages([...messagesSnapshot.data().conversation])
+				}		
 			})
 		}
 		fetchMessages();
@@ -70,17 +67,23 @@ export const ChatScreen = ({ navigation, route }) => {
 
 
 	useEffect(() => {
-		if (!messages.length) return;
+		if (!messages.length || !chatId) return;
 		setLoading(false);
 
-		messages.forEach(async message => {
-			if (message.sender !== user?.id) {
-				await updateDoc(doc(db, 'messages', message.messageId), {
-					wasRead: true,
-				})
-			}
-		})
-	}, [messages.length])
+		const updateMessagesInDB = async () => {
+			const modMessages = messages.map(message => {
+				if (message.sender !== user?.id && !message.wasRead) {
+					message.wasRead = true;
+				}
+				return message;
+			})
+
+			await updateDoc(doc(db, `messages`, `${chatId}`), {
+				conversation: modMessages
+			})
+		}
+		updateMessagesInDB();
+	}, [messages.length, chatId])
 
 
 	const onSend = useCallback(async () => {
@@ -88,12 +91,14 @@ export const ChatScreen = ({ navigation, route }) => {
 
 		if (chatId) {
 			// write message only
-			await addDoc(collection(db, 'messages'), {
-				chatId,
-				createdAt: new Date().toISOString(),
-				sender: user?.id,
-				text: messageText,
-				wasRead: false
+			await updateDoc(doc(db, `messages`, `${chatId}`), {
+				conversation: arrayUnion({
+					messageId: (Math.random() * (101 - 1) + 1).toString(32),
+					createdAt: new Date().toISOString(),
+					sender: user?.id,
+					text: messageText,
+					wasRead: false
+				})
 			})
 			await updateDoc(doc(db, `chats/${chatId}`), {
 				updatedAt: new Date().toISOString(),
@@ -111,12 +116,14 @@ export const ChatScreen = ({ navigation, route }) => {
 			})
 			setChatId(chatRef.id);
 
-			await addDoc(collection(db, 'messages'), {
-				chatId: chatRef.id,
-				createdAt: new Date().toISOString(),
-				sender: user?.id,
-				text: messageText,
-				wasRead: false
+			await setDoc(doc(db, `messages`, `${chatRef.id}`), {
+				conversation: [{
+					messageId: (Math.random() * (101 - 1) + 1).toString(32),
+					createdAt: new Date().toISOString(),
+					sender: user?.id,
+					text: messageText,
+					wasRead: false
+				}]
 			})
 		}
 

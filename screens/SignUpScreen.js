@@ -50,6 +50,7 @@ export const SignUpScreen = ({ navigation }) => {
 				const app = firebaseInit();
 				const db = getFirestore(app);
 				const userRef = doc(collection(db, 'users'), `${user?.id}`);
+				const authRef = doc(collection(db, 'auths'), `${user?.id}`);
 				const token = (await Notifications.getExpoPushTokenAsync()).data;
 				const userInfo = {
 					firstName, 
@@ -60,6 +61,7 @@ export const SignUpScreen = ({ navigation }) => {
 					pushTokens: [token]
 				};
 				await setDoc(userRef, userInfo);
+				await setDoc(authRef, { lastSignedIn: new Date().toISOString() })
 				dispatch(setPersonalData(userInfo));
 				navigation.navigate("SignUpStep2");
 			} catch(e) {

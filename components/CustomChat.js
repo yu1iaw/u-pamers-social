@@ -95,7 +95,10 @@ export const CustomChat = memo(({messages, flatlistRef, user, otherUserId, image
 					onContentSizeChange={() => flatlistRef.current?.scrollToEnd({ animated: false })}
 					onLayout={() => flatlistRef.current?.scrollToEnd({ animated: false })}
 					renderItem={renderFlatListItem}
-					// estimatedItemSize={68}
+					// estimatedItemSize={61}
+					maxToRenderPerBatch={30}
+					updateCellsBatchingPeriod={50}
+					windowSize={15}
 					keyExtractor={m => m.messageId}
 				/>
 			)}

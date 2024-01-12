@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { FlatList, Text, View } from "react-native";
-import tw from "twrnc";
+import { FlatList } from "react-native";
 import { useUser } from "@clerk/clerk-expo";
 import { useSelector, useDispatch } from "react-redux";
-import { useIsFocused, useNavigation } from "@react-navigation/native";
-import { collection, getDocs, getFirestore, or, query, where } from "firebase/firestore";
+import { useIsFocused } from "@react-navigation/native";
+import { collection, doc, getDoc, getDocs, getFirestore, or, query, where } from "firebase/firestore";
 
 import { Header } from "../components/Header";
 import { Wrapper } from "../components/Wrapper";
@@ -20,7 +19,7 @@ let initialChats = [];
 
 
 
-export const MessagesScreen = () => {
+export const MessagesScreen = ({navigation}) => {
 	const [value, setValue] = useState("");
 	const [chats, setChats] = useState([]);
 	const [loading, setLoading] = useState(true);
@@ -28,7 +27,6 @@ export const MessagesScreen = () => {
 	const { isSignedIn, user } = useUser();
 	const flatListRef = useRef(null);
 	const isFocused = useIsFocused();
-	const navigation = useNavigation();
 	const dispatch = useDispatch();	
 
 
@@ -49,17 +47,16 @@ export const MessagesScreen = () => {
 
 			const myChats = await Promise.all(chatsSnapshot.docs
 				.sort((a, b) => new Date(b.data().updatedAt) - new Date(a.data().updatedAt))
-				.map(async doc => {
-					const q = query(collection(db, 'messages'), where("chatId", "==", doc.id), where("wasRead", "==", false));
-					const messagesSnapshot = await getDocs(q);
-					const unreadMessages = messagesSnapshot.docs.map(message => ({...message.data()})).filter(message => message.sender !== user?.id);
+				.map(async document => {
+					const messagesSnapshot = await getDoc(doc(db, 'messages', document.id));
+					const unreadMessages = messagesSnapshot.data().conversation.filter(message => message.sender !== user?.id && message.wasRead === false);
 					
-					const missingUser = usersSnapshot.docs.find(d => d.id !== user?.id && d.id === doc.data().member1 || d.id !== user?.id && d.id === doc.data().member2);
+					const missingUser = usersSnapshot.docs.find(doc => doc.id !== user?.id && doc.id === document.data().member1 || doc.id !== user?.id && doc.id === document.data().member2);
 	
 					if (missingUser && !chats.length) {
 						dispatch(setCompanions({ otherUserId: missingUser.id, otherUserData: missingUser.data() }));
 					}
-					return {...doc.data(), companion: missingUser.id, unreadMessages: unreadMessages.length};
+					return {...document.data(), companion: missingUser.id, unreadMessages: unreadMessages.length};
 				}))
 				setChats(myChats);
 				initialChats = myChats;

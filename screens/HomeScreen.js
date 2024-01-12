@@ -3,8 +3,7 @@ import { FlatList, View } from "react-native";
 import tw from "twrnc";
 import { useUser } from "@clerk/clerk-expo";
 import { useDispatch } from "react-redux";
-import { arrayRemove, collection, getDocs, getFirestore, or, query, updateDoc, where, doc } from "firebase/firestore";
-import * as Notifications from 'expo-notifications';
+import { arrayRemove, collection, getDocs, getFirestore, or, query, updateDoc, where, doc, onSnapshot } from "firebase/firestore";
 
 import { Header } from "../components/Header";
 import { UserCard } from "../components/UserCard";
@@ -40,6 +39,87 @@ export const HomeScreen = ({ navigation, route }) => {
 	const flatListRef = useRef(null);
 	const { isSignedIn, user, isLoaded } = useUser();
 	const dispatch = useDispatch();
+
+
+	useEffect(() => {
+		if (!user?.id) return;
+
+		const app = firebaseInit();
+		const db = getFirestore(app);
+		const unsubscribe = onSnapshot(query(collection(db, 'auths')), (snapshot) => {
+			snapshot.docChanges().forEach(async change => {
+				if (change.type === "modified") {
+					const {token} = change.doc.data();
+
+					const q = query(collection(db, 'chats'), or(
+						where("member1", "==", `${user?.id}`),			
+						where("member2", "==", `${user?.id}`),			
+						))
+					const chatsSnapshot = await getDocs(q);
+					const usersRef = collection(db, `users`);
+					const usersSnapshot = await getDocs(usersRef);
+						
+					let index;
+					const isUpdatedUserInChats = chatsSnapshot.docs.find(doc => doc.data().member1 === change.doc.id || doc.data().member2 === change.doc.id);
+					const secondAccount = usersSnapshot.docs.find(doc => {
+						if (doc.id !== change.doc.id && doc.data().pushTokens?.indexOf(token) >= 0) {
+							index = doc.data().pushTokens?.indexOf(token);
+							return doc;
+						}
+					});
+
+					if (isUpdatedUserInChats) {
+						const firstUser = usersSnapshot.docs.find(doc => doc.id === change.doc.id && doc.id !== user?.id);
+						if (firstUser) {
+							dispatch(setCompanions({ otherUserId: firstUser.id, otherUserData: firstUser.data() }))
+						}
+		
+						if (secondAccount) {
+							const userRef = doc(usersRef, `${secondAccount.id}`);
+								await updateDoc(userRef, {
+									pushTokens: arrayRemove(token)
+								})
+							
+							const isAnotherUpdatedUserInChats = chatsSnapshot.docs.find(doc => doc.data().member1 === secondAccount.id || doc.data().member2 === secondAccount.id);
+							if (isAnotherUpdatedUserInChats) {
+								const secondUser = JSON.parse(JSON.stringify(secondAccount.data()));
+								secondUser.pushTokens?.splice(index, 1);
+								dispatch(setCompanions({ otherUserId: secondAccount.id, otherUserData: secondUser }))
+							}
+						} else if (!secondAccount && firstUser) {
+							const usersRef = collection(db, `users`);
+							const usersSnapshot = await getDocs(usersRef);
+
+							const q = query(collection(db, 'chats'), or(
+								where("member1", "==", `${user?.id}`),			
+								where("member2", "==", `${user?.id}`),			
+								))
+							const chatsSnapshot = await getDocs(q);
+
+							usersSnapshot.forEach(document => {
+								chatsSnapshot.forEach(chat => {
+									if (document.id !== user?.id && document.id === chat.data().member1 || document.id !== user?.id && document.id === chat.data().member2) {
+										dispatch(setCompanions({ otherUserId: document.id, otherUserData: document.data() }))
+									}
+								})
+							});
+						}
+					} else if (secondAccount) {
+						const isAnotherUpdatedUserInChats = chatsSnapshot.docs.find(doc => doc.data().member1 === secondAccount.id || doc.data().member2 === secondAccount.id);
+						if (isAnotherUpdatedUserInChats) {
+							const secondUser = JSON.parse(JSON.stringify(secondAccount.data()));
+							secondUser.pushTokens?.splice(index, 1);
+							dispatch(setCompanions({ otherUserId: secondAccount.id, otherUserData: secondUser }))
+						}
+					}
+				}
+			})
+		})
+
+		return () => {
+			unsubscribe();
+		}
+	}, [user?.id])
 
 
 	useEffect(() => {
@@ -123,8 +203,6 @@ export const HomeScreen = ({ navigation, route }) => {
 					where("member2", "==", `${user?.id}`),			
 				))
 				const chatsSnapshot = await getDocs(q);
-				const token = (await Notifications.getExpoPushTokenAsync()).data;
-
 				const data = [];
 		
 				usersSnapshot.forEach(document => {
@@ -142,21 +220,6 @@ export const HomeScreen = ({ navigation, route }) => {
 				});
 
 				const users = data.filter(item => item.id !== user?.id);
-
-				let index;
-				const duplicatedTokenUser = users.find(user => {
-					if (user.pushTokens?.indexOf(token) >= 0) {
-						index = user.pushTokens?.indexOf(token);
-						return user;
-					}
-				});
-				if (duplicatedTokenUser) {
-					const userRef = doc(usersRef, `${duplicatedTokenUser.id}`);
-						await updateDoc(userRef, {
-							pushTokens: arrayRemove(token)
-						})
-					duplicatedTokenUser.pushTokens?.splice(index, 1);
-				}
 
 				setUsersList(users);
 				setError('');
