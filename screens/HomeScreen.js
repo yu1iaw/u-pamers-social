@@ -54,7 +54,7 @@ export const HomeScreen = ({ navigation, route }) => {
 					const q = query(collection(db, 'chats'), or(
 						where("member1", "==", `${user?.id}`),			
 						where("member2", "==", `${user?.id}`),			
-						))
+					))
 					const chatsSnapshot = await getDocs(q);
 					const usersRef = collection(db, `users`);
 					const usersSnapshot = await getDocs(usersRef);
@@ -76,9 +76,9 @@ export const HomeScreen = ({ navigation, route }) => {
 		
 						if (secondAccount) {
 							const userRef = doc(usersRef, `${secondAccount.id}`);
-								await updateDoc(userRef, {
-									pushTokens: arrayRemove(token)
-								})
+							await updateDoc(userRef, {
+								pushTokens: arrayRemove(token)
+							})
 							
 							const isAnotherUpdatedUserInChats = chatsSnapshot.docs.find(doc => doc.data().member1 === secondAccount.id || doc.data().member2 === secondAccount.id);
 							if (isAnotherUpdatedUserInChats) {
@@ -89,12 +89,6 @@ export const HomeScreen = ({ navigation, route }) => {
 						} else if (!secondAccount && firstUser) {
 							const usersRef = collection(db, `users`);
 							const usersSnapshot = await getDocs(usersRef);
-
-							const q = query(collection(db, 'chats'), or(
-								where("member1", "==", `${user?.id}`),			
-								where("member2", "==", `${user?.id}`),			
-								))
-							const chatsSnapshot = await getDocs(q);
 
 							usersSnapshot.forEach(document => {
 								chatsSnapshot.forEach(chat => {
