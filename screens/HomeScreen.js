@@ -92,7 +92,7 @@ export const HomeScreen = ({ navigation, route }) => {
 
 							usersSnapshot.forEach(document => {
 								chatsSnapshot.forEach(chat => {
-									if (document.id !== user?.id && document.id === chat.data().member1 || document.id !== user?.id && document.id === chat.data().member2) {
+									if (document.id !== user?.id && document.id !== firstUser.id && document.id === chat.data().member1 || document.id !== user?.id && document.id !== firstUser.id && document.id === chat.data().member2) {
 										dispatch(setCompanions({ otherUserId: document.id, otherUserData: document.data() }))
 									}
 								})

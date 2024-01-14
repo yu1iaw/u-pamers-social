@@ -117,6 +117,7 @@ export const MessagesScreen = ({navigation}) => {
 									const chatInfo = item.lastMessage;
 									const unreadMessages = item.unreadMessages;
 									const updatedAt = item.updatedAt;
+									const updatedBy = item.updatedBy;
 									return (
 										<ChatUserCard 
 											userId={id}
@@ -125,6 +126,7 @@ export const MessagesScreen = ({navigation}) => {
 											image={image}
 											chatInfo={chatInfo} 
 											chatUpdatedAt={updatedAt}
+											chatUpdatedBy={updatedBy}
 											unreadMessagesIndicator={unreadMessages} 
 											navigation={navigation} 
 											style={index == chats?.length - 1 ? "" : "border-b border-gray-300"} 

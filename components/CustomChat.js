@@ -13,7 +13,7 @@ export const CustomChat = memo(({messages, flatlistRef, user, otherUserId, image
     const renderFlatListItem = ({item, index}) => {
 		const isMyOwn = item.sender === user?.id;
 		const type = isMyOwn ? "myOwn" : "notMine";
-		const { createdAt, text } = item || {};
+		const { createdAt, text, wasRead } = item || {};
 		let systemText;
 
 		const dates = messages.map(m => m.createdAt?.slice(0, 10));
@@ -60,8 +60,9 @@ export const CustomChat = memo(({messages, flatlistRef, user, otherUserId, image
 						type={type} 
 						userId={otherUserId} 
 						userImage={image} 
-						createdAt={createdAt} 
+						createdAt={createdAt}
 						messageText={text} 
+						wasRead={wasRead} 
 						navigation={navigation}
 					/>
 				</>
@@ -73,8 +74,9 @@ export const CustomChat = memo(({messages, flatlistRef, user, otherUserId, image
 				type={type} 
 				userId={otherUserId} 
 				userImage={image} 
-				createdAt={createdAt} 
+				createdAt={createdAt}
 				messageText={text} 
+				wasRead={wasRead} 
 				navigation={navigation}
 			/>
 		)

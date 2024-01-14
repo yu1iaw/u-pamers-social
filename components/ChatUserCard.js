@@ -6,7 +6,7 @@ import theme from "../constants";
 
 
 
-export const ChatUserCard = memo(({ userId: id, firstName, lastName, image, chatInfo, chatUpdatedAt, unreadMessagesIndicator, navigation, style }) => {
+export const ChatUserCard = memo(({ userId: id, firstName, lastName, image, chatInfo, chatUpdatedAt, chatUpdatedBy, unreadMessagesIndicator, navigation, style }) => {
 
 	const getFormattedDate = useMemo(() => {
 		const ms = new Date() - new Date(chatUpdatedAt);
@@ -44,7 +44,7 @@ export const ChatUserCard = memo(({ userId: id, firstName, lastName, image, chat
 						{firstName} {lastName}
 					</Text>
 					<Text numberOfLines={1} style={tw.style(`text-xs`, { fontFamily: "i", color: theme.sec_text })}>
-						{chatInfo}
+						{ chatUpdatedBy !== id && `You: `}{ chatInfo }
 					</Text>
 				</View>
 			</View>

@@ -54,7 +54,7 @@ export const ChatScreen = ({ navigation, route }) => {
 		if (!chatId) return;
 
 		const fetchMessages = async () => {
-			onSnapshot(doc(db, `chats/${chatId}`), async _doc => {
+			onSnapshot(doc(db, `messages/${chatId}`), async _doc => {
 				const messagesSnapshot = await getDoc(doc(db, 'messages', chatId));
 				if (messagesSnapshot.exists()) {
 					setMessages([...messagesSnapshot.data().conversation])
