@@ -54,8 +54,7 @@ export const ChatScreen = ({ navigation, route }) => {
 		if (!chatId) return;
 
 		const fetchMessages = async () => {
-			onSnapshot(doc(db, `messages/${chatId}`), async _doc => {
-				const messagesSnapshot = await getDoc(doc(db, 'messages', chatId));
+			onSnapshot(doc(db, `messages/${chatId}`), messagesSnapshot => {
 				if (messagesSnapshot.exists()) {
 					setMessages([...messagesSnapshot.data().conversation])
 				}		
@@ -84,6 +83,21 @@ export const ChatScreen = ({ navigation, route }) => {
 		}
 		updateMessagesInDB();
 	}, [messages.length, chatId])
+
+
+	useEffect(() => {
+		if (!messages.length) return;
+
+		const timerId = setTimeout(async () => {
+			await updateDoc(doc(db, 'badge', user?.id), {
+				isActive: arrayRemove(otherUserId)
+			})
+		}, 800)
+
+		return () => {
+			clearTimeout(timerId);
+		}
+ 	}, [messages.length])
 
 
 	const onSend = useCallback(async () => {
@@ -127,8 +141,12 @@ export const ChatScreen = ({ navigation, route }) => {
 			})
 		}
 
-		!companionsData[otherUserId] && dispatch(setCompanions({ otherUserId, otherUserData: route.params }))
 		setMessageText('');
+		!companionsData[otherUserId] && dispatch(setCompanions({ otherUserId, otherUserData: route.params }))
+
+		await updateDoc(doc(db, 'badge', `${otherUserId}`), {
+			isActive: arrayUnion(user?.id)
+		})
 
 		await fetch("https://exp.host/--/api/v2/push/send", {
 			method: "POST",

@@ -4,7 +4,7 @@ import { Image, Text, TouchableOpacity, View } from "react-native";
 import { Feather } from '@expo/vector-icons';
 import tw from "twrnc";
 import * as ImagePicker from 'expo-image-picker';
-import { collection, doc, getFirestore, updateDoc } from "firebase/firestore";
+import { collection, doc, getFirestore, setDoc, updateDoc } from "firebase/firestore";
 import { useDispatch } from "react-redux";
 
 import { ModalHeader } from "../../components/ModalHeader";
@@ -52,6 +52,9 @@ export const SignUpStep2Screen = ({navigation}) => {
 				};
 	
 				await updateDoc(userRef, personalImage);
+				await setDoc(doc(db, 'badge', `${user?.id}`), {
+					isActive: []
+				})
 				dispatch(setPersonalData(personalImage));
 			} catch(e) {
 				console.log(e);

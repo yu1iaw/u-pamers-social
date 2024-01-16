@@ -50,13 +50,22 @@ export const MessagesScreen = ({navigation}) => {
 				.map(async document => {
 					const messagesSnapshot = await getDoc(doc(db, 'messages', document.id));
 					const unreadMessages = messagesSnapshot.data().conversation.filter(message => message.sender !== user?.id && message.wasRead === false);
-					
+					let lastReadMessage, sentLastReadMessage;
+					if (unreadMessages.length) {
+						const lastItemInConversation = messagesSnapshot.data().conversation.slice(0, -unreadMessages.length).at(-1);
+						if (lastItemInConversation) {
+							lastReadMessage = lastItemInConversation.text;
+							sentLastReadMessage = lastItemInConversation.sender;
+						} else {
+							lastReadMessage = 'Incoming message';
+						}
+					}
 					const missingUser = usersSnapshot.docs.find(doc => doc.id !== user?.id && doc.id === document.data().member1 || doc.id !== user?.id && doc.id === document.data().member2);
 	
 					if (missingUser && !chats.length) {
 						dispatch(setCompanions({ otherUserId: missingUser.id, otherUserData: missingUser.data() }));
 					}
-					return {...document.data(), companion: missingUser.id, unreadMessages: unreadMessages.length};
+					return {...document.data(), companion: missingUser.id, lastReadMessage, sentLastReadMessage, unreadMessages: unreadMessages.length};
 				}))
 				setChats(myChats);
 				initialChats = myChats;
@@ -118,6 +127,8 @@ export const MessagesScreen = ({navigation}) => {
 									const unreadMessages = item.unreadMessages;
 									const updatedAt = item.updatedAt;
 									const updatedBy = item.updatedBy;
+									const lastReadMessage = item.lastReadMessage;
+									const sender = item.sentLastReadMessage;
 									return (
 										<ChatUserCard 
 											userId={id}
@@ -127,6 +138,8 @@ export const MessagesScreen = ({navigation}) => {
 											chatInfo={chatInfo} 
 											chatUpdatedAt={updatedAt}
 											chatUpdatedBy={updatedBy}
+											lastReadMessage={lastReadMessage}
+											sender={sender}
 											unreadMessagesIndicator={unreadMessages} 
 											navigation={navigation} 
 											style={index == chats?.length - 1 ? "" : "border-b border-gray-300"} 
